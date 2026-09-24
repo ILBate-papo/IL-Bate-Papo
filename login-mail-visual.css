@@ -41,3 +41,21 @@
 }
 @media(max-width:680px){.ilbp-responsive-lion-orbit{border-width:2px}.ilbp-responsive-lion-orbit.two{border-width:1.5px}}
 @media(prefers-reduced-motion:reduce){.ilbp-responsive-lion-orbit,.ilbp-responsive-globe-glow,.ilbp-responsive-spark{animation:none!important}}
+
+/* RESPONSIVO — complemento visual solicitado: 2 cartinhas neon + LED de 4 cores percorrendo a moldura. */
+@media(max-width:900px){
+  .ilbp-responsive-frame-svg{position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none;overflow:visible}
+  .ilbp-responsive-frame-track{fill:none;stroke:#16cfff42;stroke-width:2}
+  .ilbp-responsive-frame-led{fill:none;stroke:url(#ilbpResponsiveFrameGradient);stroke-width:7;stroke-linecap:round;stroke-dasharray:150 1850;filter:url(#ilbpResponsiveGlow);animation:ilbpResponsiveLedRun 4.4s linear infinite}
+  .ilbp-responsive-neon-mails{position:absolute;right:7%;bottom:10%;z-index:7;display:flex;gap:8px;align-items:center;pointer-events:none}
+  .ilbp-responsive-neon-mail{display:block;width:34px;height:24px;border:2px solid #20ddff;border-radius:5px;position:relative;background:#06182a99;color:#20ddff;box-shadow:0 0 7px currentColor,0 0 15px currentColor,inset 0 0 7px currentColor;animation:ilbpResponsiveMailBlink 1.35s ease-in-out infinite}
+  .ilbp-responsive-neon-mail::before,.ilbp-responsive-neon-mail::after{content:"";position:absolute;top:5px;width:17px;height:2px;background:currentColor;box-shadow:0 0 5px currentColor}
+  .ilbp-responsive-neon-mail::before{left:1px;transform:rotate(32deg)}
+  .ilbp-responsive-neon-mail::after{right:1px;transform:rotate(-32deg)}
+  .ilbp-responsive-neon-mail.pink{color:#ff35c8;border-color:#ff35c8;transform:translateY(-4px) scale(.92);animation-delay:-.65s}
+  .ilbp-responsive-neon-mail.cyan{color:#20ddff;border-color:#20ddff}
+}
+@keyframes ilbpResponsiveLedRun{to{stroke-dashoffset:-2000}}
+@keyframes ilbpResponsiveMailBlink{0%,100%{opacity:.48;filter:brightness(.9)}50%{opacity:1;filter:brightness(1.9)}}
+@media(max-width:520px){.ilbp-responsive-neon-mails{right:5%;bottom:8%;transform:scale(.82);transform-origin:right bottom}.ilbp-responsive-frame-led{stroke-width:8}}
+@media(prefers-reduced-motion:reduce){.ilbp-responsive-frame-led,.ilbp-responsive-neon-mail{animation:none!important}}

@@ -6,7 +6,7 @@
       var effects=document.createElement('span');
       effects.className='ilbp-responsive-lion-effects';
       effects.setAttribute('aria-hidden','true');
-      effects.innerHTML='<span class="ilbp-responsive-globe-glow"></span><span class="ilbp-responsive-lion-orbit"></span><span class="ilbp-responsive-lion-orbit two"></span><span class="ilbp-responsive-spark"></span>';
+      effects.innerHTML='<span class="ilbp-responsive-globe-glow"></span><span class="ilbp-responsive-lion-orbit"></span><span class="ilbp-responsive-lion-orbit two"></span><span class="ilbp-responsive-spark"></span><span class="ilbp-responsive-neon-mails"><i class="ilbp-responsive-neon-mail pink"></i><i class="ilbp-responsive-neon-mail cyan"></i></span><svg class="ilbp-responsive-frame-svg" viewBox="0 0 1000 455" preserveAspectRatio="none"><defs><linearGradient id="ilbpResponsiveFrameGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#19dcff"/><stop offset=".33" stop-color="#8b5cff"/><stop offset=".66" stop-color="#ff35c8"/><stop offset="1" stop-color="#ffd84a"/></linearGradient><filter id="ilbpResponsiveGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect class="ilbp-responsive-frame-track" x="5" y="5" width="990" height="445" rx="28" ry="28" pathLength="2000"/><rect class="ilbp-responsive-frame-led" x="5" y="5" width="990" height="445" rx="28" ry="28" pathLength="2000"/></svg>';
       inner.appendChild(effects);
     });
   }
