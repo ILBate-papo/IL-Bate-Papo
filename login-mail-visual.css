@@ -26,3 +26,18 @@
 @keyframes ilbpMailPulse{0%,100%{filter:brightness(1);opacity:.78}50%{filter:brightness(1.8);opacity:1;box-shadow:0 0 14px currentColor,0 0 28px currentColor,inset 0 0 10px currentColor}}
 @media(max-width:900px){.auth-shell{grid-template-columns:1fr!important}.auth-story.ilbp-photo-mode{min-height:auto!important;padding:12px!important;border-right:0!important}.ilbp-mail-stage{width:min(96vw,760px);border-radius:20px}.ilbp-mail-photo{border-radius:17px}.ilbp-lion-orbit{border-width:2px}.ilbp-neon-mails{right:3.5%;top:65%;transform:scale(.76);transform-origin:right center}}
 @media(prefers-reduced-motion:reduce){.ilbp-frame-led,.ilbp-lion-orbit,.ilbp-globe-glow,.ilbp-spark,.ilbp-neon-mail{animation:none!important}}
+
+/* RESPONSIVO: usa os MESMOS efeitos do leão/esfera da tela grande. */
+.ilbp-responsive-lion-effects{display:none}
+@media(max-width:900px){
+  .auth-card .login-logo-compact .login-logo-inner{position:relative!important;isolation:isolate!important;overflow:hidden!important}
+  /* remove somente o giro retangular anterior no responsivo; a arte e todo o restante permanecem intactos */
+  .auth-card .login-logo-compact .login-logo-inner:before{content:none!important;display:none!important;animation:none!important}
+  .ilbp-responsive-lion-effects{display:block;position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden;border-radius:inherit}
+  .ilbp-responsive-lion-orbit{position:absolute;left:1.8%;top:7%;width:39%;height:82%;box-sizing:border-box;border:3px solid transparent;border-top-color:#20d8ff;border-right-color:#0a8cff;border-bottom-color:#ff24bd;border-radius:50%;filter:drop-shadow(0 0 8px #20d8ff);animation:ilbpLionOrbit 3.7s linear infinite}
+  .ilbp-responsive-lion-orbit.two{left:5.2%;top:11%;width:33%;height:73%;border-width:2px;border-top-color:#ffc843;border-right-color:transparent;border-bottom-color:#20d8ff;animation-duration:5.2s;animation-direction:reverse}
+  .ilbp-responsive-globe-glow{position:absolute;left:10%;top:20%;width:22%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 32%,#3fe8ff2c,#076aff18 42%,transparent 72%);box-shadow:0 0 24px #00c8ff99,0 0 55px #0077ff55;animation:ilbpGlobePulse 2.6s ease-in-out infinite}
+  .ilbp-responsive-spark{position:absolute;left:29%;top:10%;width:9px;height:9px;border-radius:50%;background:#fff;box-shadow:0 0 8px 3px #20d8ff,0 0 24px 9px #008cff;animation:ilbpSpark 4s linear infinite}
+}
+@media(max-width:680px){.ilbp-responsive-lion-orbit{border-width:2px}.ilbp-responsive-lion-orbit.two{border-width:1.5px}}
+@media(prefers-reduced-motion:reduce){.ilbp-responsive-lion-orbit,.ilbp-responsive-globe-glow,.ilbp-responsive-spark{animation:none!important}}

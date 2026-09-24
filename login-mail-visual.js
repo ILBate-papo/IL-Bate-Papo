@@ -1,6 +1,17 @@
 (function(){
   "use strict";
+  function installResponsiveLion(){
+    document.querySelectorAll('.auth-card .login-logo-compact .login-logo-inner').forEach(function(inner){
+      if(inner.querySelector('.ilbp-responsive-lion-effects')) return;
+      var effects=document.createElement('span');
+      effects.className='ilbp-responsive-lion-effects';
+      effects.setAttribute('aria-hidden','true');
+      effects.innerHTML='<span class="ilbp-responsive-globe-glow"></span><span class="ilbp-responsive-lion-orbit"></span><span class="ilbp-responsive-lion-orbit two"></span><span class="ilbp-responsive-spark"></span>';
+      inner.appendChild(effects);
+    });
+  }
   function install(){
+    installResponsiveLion();
     var story=document.querySelector('.auth-story');
     if(!story||story.querySelector('.ilbp-mail-stage')) return;
     story.classList.add('ilbp-photo-mode');
