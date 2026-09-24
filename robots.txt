@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://il-bate-papo.github.io/sitemap.xml

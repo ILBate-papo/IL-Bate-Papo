@@ -1,0 +1,19 @@
+IL BATE PAPO - CORRECAO DE COMPATIBILIDADE DA CAMERA NO COMPUTADOR
+Data: 22/09/2026
+
+Alteracao feita somente no IL Bate Papo:
+- index.html recebeu uma camada de compatibilidade ANTES do bundle principal.
+- Mantem o pedido normal de camera/microfone.
+- Se o PC rejeitar facingMode (camera frontal/traseira), tenta a webcam disponivel sem facingMode.
+- Se camera + microfone falhar por conflito, tenta preservar a camera como fallback.
+
+Nao foram alterados:
+- IL Chats Mail
+- Supabase
+- banco de dados
+- autenticacao
+- DNS
+- GitHub de outros projetos
+
+Publicar os arquivos DE DENTRO desta pasta no repositorio IL-Bate-Papo/il-bate-papo.github.io.
+Depois testar primeiro uma chamada de video no computador.

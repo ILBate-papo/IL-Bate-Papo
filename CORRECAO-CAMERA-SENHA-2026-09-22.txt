@@ -1,0 +1,12 @@
+IL BATE PAPO — correção 22/09/2026
+
+- Login continua aceitando qualquer e-mail cadastrado (nenhum domínio é acrescentado).
+- Restaurado botão de mostrar/ocultar senha no login e cadastro.
+- Webcam do computador: tentativa robusta de câmera+microfone, fallback para câmera genérica e, se necessário, câmera sem áudio para não perder o vídeo.
+- Streams continuam sendo encerrados ao sair da chamada pelo código existente.
+- Google Login e Supabase do IL Bate Papo não foram trocados.
+- IL Chats Mail não foi alterado.
+
+IMPORTANTE: se o Supabase responder “e-mail ou senha incorretos”, esta versão não redefine nem adivinha credenciais; use a conta efetivamente cadastrada no Supabase do IL Bate Papo.
+
+- Exemplo visual do campo E-mail: ildebrandoleandro@exemplo.com (apenas exemplo; aceita qualquer e-mail válido).

@@ -1,0 +1,1 @@
+v10: alteração somente na camada de acesso à câmera. Mantém o restante da v9. Tenta cada videoinput por deviceId, usa timeout para câmera travada e fallbacks genéricos; preserva áudio e funções de notificação.
