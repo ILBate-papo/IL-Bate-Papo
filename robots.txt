@@ -1,3 +1,3 @@
 User-agent: *
-Allow: /
-Sitemap: https://il-bate-papo.github.io/sitemap.xml
+Allow: /IL-Bate-Papo/
+Sitemap: https://ilbate-papo.github.io/IL-Bate-Papo/sitemap.xml
