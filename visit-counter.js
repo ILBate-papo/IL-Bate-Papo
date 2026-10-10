@@ -5,18 +5,18 @@
     "https://ipwho.is/?fields=success,country_code,country,region,city",
     "https://ipapi.co/json/"
   ];
-  var VISIT_MARKER = "ilchats-visit-recorded-v1";
+  var VISIT_MARKER = "ilbp-visit-recorded-v1";
   var SUPABASE_URL = "https://ngidsolvxegpyrprlbex.supabase.co";
   var SUPABASE_KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
 
   function getClient() {
-    if (window.__ilToolsClient) return window.__ilToolsClient;
+    if (window.__ilbpToolsClient) return window.__ilbpToolsClient;
     if (typeof window.makeClient === "function") return window.makeClient();
-    if (!window.supabase || !window.supabase.createClient) return null;
-    window.__ilToolsClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    if (!window.supabase || !window.ILBPCreateClient) return null;
+    window.__ilbpToolsClient = window.ILBPCreateClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
     });
-    return window.__ilToolsClient;
+    return window.__ilbpToolsClient;
   }
 
   function text(value, fallback) {
@@ -82,7 +82,7 @@
       await sendVisit(geo);
     } catch (error) {
       try { sessionStorage.removeItem(VISIT_MARKER); } catch (_) {}
-      console.warn("IL Chats: contador de visitas temporariamente indisponível.", error);
+      console.warn("IL Bate Papo: contador de visitas temporariamente indisponível.", error);
     }
   }
 
@@ -203,7 +203,7 @@
         var accounts = document.createElement("section");
         accounts.className = "account-count-summary";
         accounts.innerHTML =
-          '<h4>O IL Chats está crescendo?</h4><div class="account-numbers">' +
+          '<h4>O IL Bate Papo está crescendo?</h4><div class="account-numbers">' +
           '<div><strong class="account-count-number">…</strong><span>Contas cadastradas</span></div>' +
           '<div><strong class="connected-account-number">…</strong><span>Contas com contato conectado</span></div>' +
           '<div><strong class="visit-total-number">…</strong><span>Visitas registradas</span></div>' +
@@ -226,3 +226,4 @@
   recordVisit();
   installAdminPanel();
 })();
+

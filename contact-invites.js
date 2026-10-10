@@ -6,10 +6,10 @@
 
   function client() {
     if (db) return db;
-    db = window.__ilToolsClient || (window.supabase && window.supabase.createClient(URL, KEY, {
+    db = window.__ilbpToolsClient || (window.supabase && window.ILBPCreateClient(URL, KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
     }));
-    if (db) window.__ilToolsClient = db;
+    if (db) window.__ilbpToolsClient = db;
     return db;
   }
 
@@ -44,7 +44,7 @@
         alert("Não foi possível adicionar este contato agora: " + result.error.message);
         return;
       }
-      localStorage.removeItem("ilchats-pending-contact");
+      localStorage.removeItem("ilbp-pending-contact");
       history.replaceState(null, "", location.pathname + location.hash);
       clear();
       location.reload();
@@ -122,3 +122,4 @@
     setInterval(check, 12000);
   });
 })();
+

@@ -15,10 +15,10 @@
   }
 
   function toolsClient(){
-    if(window.__ilToolsClient)return window.__ilToolsClient;
+    if(window.__ilbpToolsClient)return window.__ilbpToolsClient;
     if(!window.supabase)return null;
-    window.__ilToolsClient=window.supabase.createClient("https://ngidsolvxegpyrprlbex.supabase.co","sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
-    return window.__ilToolsClient;
+    window.__ilbpToolsClient=window.ILBPCreateClient("https://ngidsolvxegpyrprlbex.supabase.co","sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+    return window.__ilbpToolsClient;
   }
 
   async function invite(){
@@ -63,3 +63,4 @@
   window.addEventListener("load",function(){setTimeout(install,300)});
   install();
 })();
+

@@ -10,12 +10,12 @@
 
   function getClient() {
     if (client) return client;
-    if (window.__ilToolsClient) client = window.__ilToolsClient;
-    else if (window.supabase && window.supabase.createClient) {
-      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    if (window.__ilbpToolsClient) client = window.__ilbpToolsClient;
+    else if (window.supabase && window.ILBPCreateClient) {
+      client = window.ILBPCreateClient(SUPABASE_URL, SUPABASE_KEY, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
       });
-      window.__ilToolsClient = client;
+      window.__ilbpToolsClient = client;
     }
     return client;
   }
@@ -121,3 +121,4 @@
   });
   window.addEventListener("load", function () { setTimeout(start, 1000); });
 })();
+

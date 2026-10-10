@@ -6,7 +6,7 @@
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return;
     audioContext ||= new AudioContextClass();
-    if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+    if (audioContext.state === "suspended") audioContext.resume().then(() => { if (ringing) playPattern(); }).catch(() => {});
   };
   const playPattern = () => {
     unlockAudio();
@@ -48,3 +48,4 @@
   new MutationObserver(check).observe(document.documentElement, { childList: true, subtree: true });
   check();
 })();
+

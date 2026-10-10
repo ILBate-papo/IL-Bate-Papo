@@ -18,7 +18,7 @@
     }).then(function (response) {
       if (!response.ok) return response.text().then(function (text) { throw new Error("push-notify " + response.status + ": " + text); });
       return response;
-    }).catch(function (error) { console.error("[IL Chats Push] falha ao disparar push", error); });
+    }).catch(function (error) { console.error("[IL Bate Papo Push] falha ao disparar push", error); });
   }
 
   window.fetch = async function (input, init) {
@@ -48,7 +48,8 @@
           }, headers);
         }
       });
-    } catch (error) { console.error("[IL Chats Push] falha ao interpretar envio", error); }
+    } catch (error) { console.error("[IL Bate Papo Push] falha ao interpretar envio", error); }
     return response;
   };
 })();
+
