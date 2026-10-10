@@ -12,27 +12,36 @@ self.addEventListener("push", function (event) {
   try { data = event.data ? event.data.json() : {}; } catch (_) {
     data = { body: event.data ? event.data.text() : "Você tem uma novidade no IL Bate Papo." };
   }
+  if (!data || typeof data !== "object") data = {};
   var isCall = data.type === "call";
-  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (windows) {
-    // O Android pode manter uma janela como "visible" mesmo quando o PWA/TWA
-    // está em segundo plano ou com a tela bloqueada. Nunca suprima chamadas.
-    if (!isCall && windows.some(function (client) { return isILBPWindow(client) && client.visibilityState === "visible"; })) return;
-    return self.registration.showNotification(data.title || (isCall ? "Ligação no IL Bate Papo" : "Nova mensagem no IL Bate Papo"), {
-    body: data.body || (isCall ? "Alguém está ligando para você." : "Você recebeu uma mensagem."),
+  var isVideoCall = isCall && data.mode === "video";
+  var kind = data.attachment_type || data.message_type;
+  var label = isCall ? (isVideoCall ? "Videochamada recebida" : "Ligação recebida") :
+    kind === "audio" ? "Mensagem de áudio recebida" :
+    kind === "video" ? "Vídeo recebido" :
+    kind === "image" ? "Foto recebida" :
+    kind === "file" ? "Arquivo recebido" : "Nova mensagem";
+  var rawTime = data.created_at || data.timestamp;
+  var timestamp = typeof rawTime === "number" ? rawTime : Date.parse(rawTime);
+  if (!Number.isFinite(timestamp) || timestamp <= 0 || timestamp > Date.now() + 300000) timestamp = Date.now();
+  var suppliedBody = String(data.body || data.preview || "").slice(0,180);
+  var body = suppliedBody || (isCall ? "Alguém está ligando para você." : "Você recebeu uma mensagem no IL Bate Papo.");
+  var title = String(data.title || label + " no IL Bate Papo").slice(0,100);
+  var eventId = String(data.call_id || data.message_id || "").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,100);
+  // A push must produce an OS notification even when a frozen client reports visible.
+  event.waitUntil(self.registration.showNotification(title, {
+    body: body,
     icon: new URL("icon.svg",self.registration.scope).href,
     badge: new URL("icon.svg",self.registration.scope).href,
-    tag: data.tag || (isCall ? "ilbp-call" : "ilbp-message"),
+    tag: String(data.tag || (isCall ? "ilbp-call-" : "ilbp-message-") + (eventId || String(timestamp))).slice(0,150),
     renotify: true,
     requireInteraction: isCall,
     silent: false,
-    timestamp: Date.now(),
-    vibrate: isCall ? [700, 300, 700, 300, 900] : [250, 120, 250],
-    data: { url: ILBP_HOME, type: data.type || "message" },
-    actions: isCall ? [
-      { action: "open", title: "Abrir chamada" },
-      { action: "dismiss", title: "Fechar aviso" }
-    ] : [{ action: "open", title: "Abrir" }]
-    });
+    timestamp: timestamp,
+    vibrate: isCall ? [700,300,700,300,900] : [250,120,250],
+    data: { url: ILBP_HOME, type: isCall ? "call" : "message", received_at: timestamp },
+    actions: isCall ? [{action:"open",title:"Abrir chamada"},{action:"dismiss",title:"Fechar aviso"}] :
+      [{action:"open",title:"Abrir"}]
   }));
 });
 
