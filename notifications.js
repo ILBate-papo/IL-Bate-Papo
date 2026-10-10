@@ -43,7 +43,7 @@
   }
   async function show(title, body, isCall, tag) {
     if (Notification.permission !== "granted" || !registration || document.visibilityState === "visible") return;
-    await registration.showNotification(title, { body: body, icon: new URL("./icon.svg",document.baseURI).href, badge: new URL("./icon.svg",document.baseURI).href, tag: tag, renotify: true, requireInteraction: isCall, vibrate: isCall ? [700,300,700,300,900] : [250,120,250], data: { url: new URL("./",document.baseURI).href, type: isCall ? "call" : "message" } });
+    await registration.showNotification(title, { body: body, icon: new URL("./icon.svg",document.baseURI).href, badge: new URL("./icon.svg",document.baseURI).href, tag: tag, renotify: true, requireInteraction: isCall, vibrate: isCall ? [700,300,700,300,900] : [250,120,250], data: { url: new URL("/",location.href).href, type: isCall ? "call" : "message" } });
   }
   async function senderName(id) { var result = await client().from("profiles").select("display_name").eq("id", id).maybeSingle(); return result.data && result.data.display_name || "Alguém"; }
   async function onMessage(row) {
@@ -73,7 +73,7 @@
   }
   async function start() {
     if (!("serviceWorker" in navigator) || !("Notification" in window) || !("PushManager" in window)) { logError("compatibilidade", "Web Push indisponível"); return; }
-    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261010-1", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
+    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261010-2", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
     var c = client(); if (!c) throw new Error("Cliente Supabase não encontrado");
     var session = await c.auth.getSession(); await configureForSession(session.data && session.data.session && session.data.session.user);
     c.auth.onAuthStateChange(function (_event, nextSession) { setTimeout(function () { configureForSession(nextSession && nextSession.user).catch(function (error) { logError("sessão", error); }); }, 0); });
