@@ -23,7 +23,7 @@
     if (Notification.permission !== "granted") throw new Error("Permissão não concedida");
     var subscription = await registration.pushManager.getSubscription();
     if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey(VAPID_PUBLIC_KEY) });
-    var result = await client().from("push_subscriptions").upsert({ user_id: user.id, endpoint: subscription.endpoint, subscription: subscription.toJSON(), updated_at: new Date().toISOString() }, { onConflict: "endpoint" }).select("id").single();
+    var result = await client().from("push_subscriptions").upsert({ user_id: user.id, endpoint: subscription.endpoint, subscription: Object.assign(subscription.toJSON(), { app_id: "ilbp" }), updated_at: new Date().toISOString() }, { onConflict: "endpoint" }).select("id").single();
     if (result.error) throw result.error;
     console.info("[IL Bate Papo Push] dispositivo registrado", result.data && result.data.id);
   }
@@ -46,10 +46,30 @@
     await registration.showNotification(title, { body: body, timestamp: Date.parse(createdAt) || Date.now(), silent: false, icon: new URL("./icon.svg",document.baseURI).href, badge: new URL("./icon.svg",document.baseURI).href, tag: tag, renotify: true, requireInteraction: isCall, vibrate: isCall ? [700,300,700,300,900] : [250,120,250], data: { url: new URL("/",location.href).href, type: isCall ? "call" : "message" } });
   }
   async function senderName(id) { var result = await client().from("profiles").select("display_name").eq("id", id).maybeSingle(); return result.data && result.data.display_name || "Alguém"; }
+
+  function unlockMessageAudio() {
+    try {
+      var C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+      var ctx=window.__ilMessageAudio||(window.__ilMessageAudio=new C());
+      if(ctx.state==='suspended')ctx.resume().catch(function(){});
+    } catch (_) {}
+  }
+  function foregroundMessageAlert() {
+    try {
+      if(navigator.vibrate)navigator.vibrate([180,90,180]);
+      var ctx=window.__ilMessageAudio;if(!ctx||ctx.state!=='running')return;
+      var o=ctx.createOscillator(),g=ctx.createGain(),now=ctx.currentTime;
+      o.frequency.value=880;g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.12,now+.015);g.gain.exponentialRampToValueAtTime(.0001,now+.16);
+      o.connect(g).connect(ctx.destination);o.start(now);o.stop(now+.18);
+    } catch (_) {}
+  }
+  document.addEventListener('pointerdown',unlockMessageAudio,{passive:true});
+  document.addEventListener('keydown',unlockMessageAudio);
+
   async function onMessage(row) {
     if (!user || !row || row.sender_id === user.id || seen.has("m:" + row.id)) return;
     seen.add("m:" + row.id);
-    try { var name = await senderName(row.sender_id); var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
+    try { if(document.visibilityState==="visible")foregroundMessageAlert(); var name = await senderName(row.sender_id); var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
   }
   async function onCall(row) {
     if (!user || !row || row.recipient_id !== user.id || row.signal_type !== "offer" || seen.has("c:" + row.call_id)) return;
@@ -80,4 +100,5 @@
   }
   window.addEventListener("load", function () { start().catch(function (error) { logError("inicialização", error); }); });
 })();
+
 
