@@ -40,17 +40,27 @@
   photo.onclick=()=>{if(pending||recorder?.state==='recording')return;if(!video.videoWidth){message('Aguarde a imagem da câmera.');return;}const token=generation;const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);canvas.toBlob(blob=>{if(blob&&token===generation&&overlay.isConnected)preview(new File([blob],'foto-'+Date.now()+'.jpg',{type:'image/jpeg'}));},'image/jpeg',.9);};
   record.onclick=async()=>{
    if(recorder?.state==='recording'){record.disabled=true;recorder.stop();return;}
-   if(pending||!stream)return;if(!window.MediaRecorder){message('Este navegador não permite gravar vídeo.');return;}
+   if(pending||!stream)return;if(!stream.getVideoTracks().some(t=>t.readyState==='live')){message('A câmera parou. Toque em Refazer para abrir novamente.');return;}if(!window.MediaRecorder){message('Este navegador não permite gravar vídeo.');return;}
    pending=true;record.disabled=photo.disabled=flip.disabled=true;const token=generation;
    try{
-    if(!stream.getAudioTracks().length){const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});if(token!==generation||!stream||!overlay.isConnected){mic.getTracks().forEach(t=>t.stop());return;}mic.getAudioTracks().forEach(t=>stream.addTrack(t));}
+    if(!stream.getAudioTracks().some(t=>t.readyState==='live')){
+     message('Aguardando permissão do microfone para gravar com áudio…');
+     let microphoneExpired=false,timer;
+     const request=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false}).then(mic=>{if(microphoneExpired||token!==generation||!overlay.isConnected){mic.getTracks().forEach(t=>t.stop());throw new Error('Permissão do microfone demorou. Tente novamente.');}return mic;});
+     let mic;
+     try{mic=await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>{microphoneExpired=true;reject(new Error('A permissão do microfone não respondeu.'));},12000);})]);}
+     catch(error){message('Microfone indisponível: '+(error.message||error.name));if(!overlay.isConnected||token!==generation)return;if(!confirm('Não foi possível acessar o microfone. Deseja gravar o vídeo sem áudio?'))throw error;}
+     finally{clearTimeout(timer);}
+     if(mic){if(token!==generation||!stream||!overlay.isConnected){mic.getTracks().forEach(t=>t.stop());return;}mic.getAudioTracks().forEach(t=>stream.addTrack(t));}
+    }
+    message('Preparando gravação…');
     const mime=['video/webm;codecs=vp8,opus','video/webm','video/mp4'].find(t=>MediaRecorder.isTypeSupported(t));
     recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);const active=recorder,chunks=[];
     active.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-    active.onerror=()=>{stop();message('A gravação falhou. Abra a câmera novamente para tentar.');};
+    active.onerror=event=>{stop();record.textContent='● Gravar vídeo';message('A gravação falhou: '+(event.error?.message||event.error?.name||'Abra a câmera novamente para tentar.'));};
     active.onstop=()=>{if(token!==generation||!overlay.isConnected)return;const type=active.mimeType||mime||'video/webm';const blob=new Blob(chunks,{type});if(!blob.size){stop();message('O vídeo ficou vazio. Abra a câmera novamente.');return;}preview(new File([blob],'video-'+Date.now()+(type.includes('mp4')?'.mp4':'.webm'),{type}));};
-    recorder.start(1000);record.disabled=false;record.textContent='■ Parar gravação';message('Gravando vídeo com áudio');
-   }catch(e){message('Não foi possível gravar: '+(e.message||e.name));record.disabled=photo.disabled=false;flip.disabled=devices.length<2;}
+    recorder.start();record.disabled=false;record.textContent='■ Parar gravação';message(stream.getAudioTracks().some(t=>t.readyState==='live')?'Gravando vídeo com áudio':'Gravando vídeo sem áudio');
+   }catch(e){if(token===generation&&overlay.isConnected){message('Não foi possível gravar: '+(e.message||e.name));record.disabled=photo.disabled=false;flip.disabled=devices.length<2;}}
    finally{pending=false;}
   };
   await start();

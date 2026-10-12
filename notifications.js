@@ -94,10 +94,32 @@
   async function start() {
     if (!("serviceWorker" in navigator) || !("Notification" in window) || !("PushManager" in window)) { logError("compatibilidade", "Web Push indisponível"); return; }
     registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261010-3", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
+    if (!registration.active) await new Promise((resolve,reject)=>{var timer=setTimeout(()=>reject(new Error("Ativação das notificações demorou. Reabra o site.")),12000);function check(){if(registration.active){clearTimeout(timer);resolve();}}var worker=registration.installing||registration.waiting;if(worker)worker.addEventListener("statechange",check);check();});
     var c = client(); if (!c) throw new Error("Cliente Supabase não encontrado");
     var session = await c.auth.getSession(); await configureForSession(session.data && session.data.session && session.data.session.user);
     c.auth.onAuthStateChange(function (_event, nextSession) { setTimeout(function () { configureForSession(nextSession && nextSession.user).catch(function (error) { logError("sessão", error); }); }, 0); });
   }
+
+  function installAlertSettings() {
+    if (!("Notification" in window) || !("PushManager" in window)) return;
+    var profile=document.querySelector('.profile');if(!profile||profile.querySelector('.il-alert-settings'))return;
+    var section=document.createElement('section');section.className='il-alert-settings';
+    section.style.cssText='padding:12px;border:1px solid #19d7ff55;border-radius:12px;margin:12px 0';
+    var button=document.createElement('button');button.type='button';button.textContent='🔔 Ativar e testar avisos neste aparelho';button.style.cssText='width:100%;min-height:44px;border:0;border-radius:10px;background:#15c9ef;color:#00131a;font-weight:700';
+    var status=document.createElement('p');status.setAttribute('role','status');status.style.cssText='font-size:12px;line-height:1.5;color:#c7d2df;margin:8px 0 0';status.textContent='Ative aqui os avisos de mensagens e chamadas.';
+    button.onclick=async function(){button.disabled=true;try{
+      var permission=Notification.permission;if(permission==='default')permission=await Notification.requestPermission();
+      if(permission!=='granted')throw new Error('Permita as notificações nas configurações deste site.');
+      if(!registration||!user)await start();if(!user)throw new Error('Entre na sua conta para ativar os avisos.');
+      await subscribeForPush();
+      await registration.showNotification('IL Bate Papo: avisos ativados',{body:'Este é um teste dos avisos neste aparelho.',icon:new URL('./icon.svg',document.baseURI).href,tag:'alerts-test',silent:false,vibrate:[250,120,250]});
+      status.textContent='Avisos ativados neste aparelho. Agora faça o teste de chamada com o outro aparelho.';
+    }catch(error){status.textContent=error.message||'Não foi possível ativar. Tente novamente.';}finally{button.disabled=false;}};
+    section.append(button,status);profile.appendChild(section);
+  }
+  new MutationObserver(installAlertSettings).observe(document.documentElement,{childList:true,subtree:true});
+  installAlertSettings();
+
   window.addEventListener("load", function () { start().catch(function (error) { logError("inicialização", error); }); });
 })();
 

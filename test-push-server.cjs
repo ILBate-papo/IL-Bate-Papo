@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),{stripTypeScriptTypes}=require('node:module');
+const source=fs.readFileSync(__dirname+'/supabase/functions/push-notify/index.ts','utf8').replace(/^import .*;\s*$/mg,'');
+let handler,sent=[],filterApp=null,authorized=true;
+const createClient=()=>({auth:{getUser:async()=>({data:{user:authorized?{id:'sender'}:null}})},from:table=>({select(){return this;},eq(){return this;},neq(){return this;},in(){return this;},contains(_column,data){filterApp=data.app_id;return Promise.resolve({data:[{id:'subscription',subscription:{endpoint:'https://push.test/subscription',app_id:data.app_id}}]});},maybeSingle:async()=>({data:{call_id:'call',user_id:'sender',display_name:'Professor'}})})});
+vm.runInNewContext(stripTypeScriptTypes(source),{Deno:{env:{get:()=>''},serve:fn=>handler=fn},createClient,webpush:{setVapidDetails(){},sendNotification:async(subscription,payload,options)=>sent.push({subscription,payload:JSON.parse(payload),options})},Response,console,Date,String});
+(async()=>{for(const [origin,id,name] of [['https://il-chta.github.io','ilchats','IL Chats'],['https://ilbate-papo.github.io','ilbp','IL Bate Papo']]){
+let response=await handler(new Request('https://server.test/',{method:'OPTIONS',headers:{Origin:origin}}));assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin);
+response=await handler(new Request('https://server.test/',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({type:'call',sender_id:'sender',recipient_id:'peer',call_id:'12345678-1234-1234-1234-123456789012',mode:'video'})}));assert.equal(response.status,200);const call=sent.at(-1);assert(call.payload.title.includes(name));assert.equal(call.subscription.app_id,id);assert(call.options.topic.length<=32);assert.equal(call.options.urgency,'high');
+}
+let response=await handler(new Request('https://server.test/',{method:'OPTIONS',headers:{Origin:'https://unknown.test'}}));assert.equal(response.status,403);
+authorized=false;response=await handler(new Request('https://server.test/',{method:'POST',headers:{Origin:'https://il-chta.github.io'},body:'{}'}));assert.equal(response.status,401);
+console.log('Passed: both official origins, app-specific subscriptions and branding, valid push topic and unauthorized rejection. Live deployment version 5; physical-device delivery still needs testing.');})().catch(e=>{console.error(e);process.exit(1);});
