@@ -35,6 +35,14 @@ public class MainActivity extends Activity {
   WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setMediaPlaybackRequiresUserGesture(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
   web.setWebViewClient(new WebViewClient(){@Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();}});
   web.setWebChromeClient(new WebChromeClient(){
+   @Override public boolean onJsAlert(WebView view,String url,String message,JsResult result){
+    if(!trusted(Uri.parse(url))){result.cancel();return true;}
+    new AlertDialog.Builder(MainActivity.this).setMessage(message).setPositiveButton("OK",(dialog,which)->result.confirm()).setOnCancelListener(dialog->result.cancel()).show();return true;
+   }
+   @Override public boolean onJsConfirm(WebView view,String url,String message,JsResult result){
+    if(!trusted(Uri.parse(url))){result.cancel();return true;}
+    new AlertDialog.Builder(MainActivity.this).setMessage(message).setPositiveButton("Sim",(dialog,which)->result.confirm()).setNegativeButton("Não",(dialog,which)->result.cancel()).setOnCancelListener(dialog->result.cancel()).show();return true;
+   }
    @Override public void onPermissionRequest(PermissionRequest request){runOnUiThread(()->{
     if(!trusted(request.getOrigin())||pending!=null){request.deny();return;}
     pending=request;ArrayList<String> missing=new ArrayList<>();
@@ -93,5 +101,7 @@ public class MainActivity extends Activity {
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==43&&files!=null){ArrayList<Uri> uris=new ArrayList<>();if(result==RESULT_OK&&data!=null){if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)uris.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)uris.add(data.getData());}files.onReceiveValue(uris.isEmpty()?null:uris.toArray(new Uri[0]));files=null;}}
  @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);web.saveState(state);}
  @Override public void onBackPressed(){if(web.canGoBack())web.goBack();else super.onBackPressed();}
+ @Override protected void onPause(){if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('ilbp-pause'))",null);super.onPause();}
  @Override protected void onDestroy(){if(pending!=null)pending.deny();if(files!=null)files.onReceiveValue(null);web.destroy();super.onDestroy();}
 }
+

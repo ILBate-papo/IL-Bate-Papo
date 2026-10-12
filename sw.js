@@ -5,7 +5,7 @@ self.addEventListener("message", function (event) {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
 });
 
-var ILBP_HOME = new URL("/",self.registration.scope).href;
+var ILBP_HOME = new URL("/IL-Bate-Papo/",self.registration.scope).href;
 function isILBPWindow(client) { var url=new URL(client.url);return url.origin===new URL(ILBP_HOME).origin && (url.pathname==="/" || url.pathname==="/index.html" || url.pathname.indexOf("/IL-Bate-Papo/")===0); }
 self.addEventListener("push", function (event) {
   var data = {};

@@ -3,6 +3,7 @@
  let stream=null, recorder=null, generation=0, cleanup=null;
  async function open(composer){
   if(cleanup)cleanup();
+  document.querySelectorAll('.chat-camera-overlay').forEach(node=>node.remove());
   const overlay=document.createElement('div');overlay.className='chat-camera-overlay';
   overlay.innerHTML='<div class="chat-camera-head"><button type="button" aria-label="Fechar câmera">✕</button><strong>Câmera da conversa</strong><button type="button" aria-label="Trocar câmera">🔄</button></div><div class="chat-camera-stage"><video autoplay muted playsinline></video><span class="chat-camera-status">Preparando câmera…</span></div><div class="chat-camera-controls"><button type="button" class="take-photo">📷</button><button type="button" class="record-video">● Gravar vídeo</button></div>';
   document.body.appendChild(overlay);
@@ -10,9 +11,12 @@
   let devices=[],deviceIndex=0,front=false,previewURL=null,pending=false;
   function message(text){status.style.display='block';status.textContent=text;}
   function stop(){if(recorder){recorder.onstop=null;recorder.ondataavailable=null;if(recorder.state!=='inactive')recorder.stop();recorder=null;}if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;}
-  function close(){generation++;stop();if(previewURL)URL.revokeObjectURL(previewURL);overlay.remove();document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',close);if(cleanup===close)cleanup=null;}
+  function close(){generation++;stop();if(previewURL)URL.revokeObjectURL(previewURL);overlay.remove();document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',close);window.removeEventListener('ilbp-pause',close);window.removeEventListener('popstate',routeChanged);window.removeEventListener('hashchange',routeChanged);observer.disconnect();if(cleanup===close)cleanup=null;}
   function hidden(){if(document.hidden)close();}
-  cleanup=close;document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',close);overlay.querySelector('[aria-label="Fechar câmera"]').onclick=close;
+  function routeChanged(){close();}
+  const observer=new MutationObserver(()=>{if(!composer.isConnected)close();});observer.observe(document.body,{childList:true,subtree:true});
+  window.addEventListener('popstate',routeChanged);window.addEventListener('hashchange',routeChanged);
+  cleanup=close;document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',close);window.addEventListener('ilbp-pause',close);overlay.querySelector('[aria-label="Fechar câmera"]').onclick=close;
   async function start(){
    const token=++generation;stop();photo.disabled=record.disabled=flip.disabled=true;
    try{
@@ -27,7 +31,7 @@
     devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
     const id=opened.getVideoTracks()[0]?.getSettings().deviceId;deviceIndex=Math.max(0,devices.findIndex(d=>d.deviceId===id));
     photo.disabled=record.disabled=false;flip.disabled=devices.length<2;message('Câmera pronta');
-   }catch(e){if(token!==generation)return;stop();message(e.name==='NotAllowedError'?'Permita a câmera nas configurações do navegador.':e.name==='NotReadableError'?'A câmera está ocupada. Feche outro aplicativo ou chamada e tente novamente.':e.message||'Não foi possível abrir a câmera.');}
+   }catch(e){if(token!==generation)return;stop();message(e.name==='NotAllowedError'?'Permita a câmera nas configurações do IL Bate Papo ou do navegador.':e.name==='NotReadableError'?'A câmera está ocupada. Feche outro aplicativo ou chamada e tente novamente.':e.message||'Não foi possível abrir a câmera.');}
   }
   function preview(file){
    stop();photo.disabled=record.disabled=flip.disabled=true;
@@ -68,3 +72,4 @@
  function install(){document.querySelectorAll('.composer .camera-share-button').forEach(current=>{if(current.dataset.inChatCamera)return;const button=current.cloneNode(true);button.dataset.modeFix=button.dataset.nativeCamera=button.dataset.inChatCamera='1';current.replaceWith(button);button.type='button';button.setAttribute('aria-label','Abrir câmera na conversa');button.onclick=()=>open(button.closest('.composer'));});}
  new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});install();
 })();
+

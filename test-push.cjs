@@ -24,7 +24,7 @@ async function deliver(data) {
   n = await deliver({ type: 'call', mode: 'video', call_id: 'c1' });
   assert.match(n.title, /Videochamada/);
   assert.equal(n.options.requireInteraction, true);
-  assert.equal(n.options.data.url, 'https://ilbate-papo.github.io/');
+  assert.equal(n.options.data.url, 'https://ilbate-papo.github.io/IL-Bate-Papo/');
   assert.equal(n.options.tag, 'ilbp-call-c1');
   n = await deliver({ type: 'message', body: 'Olá', created_at: 'invalid' });
   assert.equal(n.options.body, 'Olá');
