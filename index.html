@@ -258,6 +258,80 @@
 @media(prefers-reduced-motion:reduce){.auth-card .login-logo-inner:before{animation:none!important}}
 </style>
 
+
+<style id="il-mobile-viewport-20261011">
+:root{--il-visible-height:100dvh;--il-visible-top:0px;--il-nav-height:67px}
+.app{height:var(--il-visible-height)!important;max-height:var(--il-visible-height)!important}
+.conversation{max-height:100%!important}
+.conversation-head{flex-shrink:0!important;min-width:0}
+.conversation-head>div:nth-of-type(2){min-width:0}
+.conversation-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.head-actions{flex-shrink:0;align-items:center}
+.composer{flex-shrink:0!important;min-width:0;max-width:100%;box-sizing:border-box}
+.composer>input:not(.attachment-file){width:0;min-width:0;flex:1 1 0}
+.composer>button,.composer>.attach-button{flex-shrink:0}
+.messages{min-height:0!important;min-width:0;overflow:auto!important;overflow-wrap:anywhere}
+.call-screen{top:var(--il-visible-top)!important;bottom:auto!important;height:var(--il-visible-height)!important;max-height:var(--il-visible-height)!important;box-sizing:border-box}
+@media(max-width:680px){
+ #root:has(.app){position:fixed;top:var(--il-visible-top);left:0;right:0;height:var(--il-visible-height);overflow:hidden}
+ .app{padding-bottom:var(--il-nav-height)!important}
+ .inbox{height:calc(var(--il-visible-height) - var(--il-nav-height))!important}
+ .conversation{inset:0 0 var(--il-nav-height)!important;height:auto!important;max-height:none!important}
+ .mobile-nav{position:absolute!important;bottom:0!important;height:67px;padding-bottom:env(safe-area-inset-bottom)}
+ html.il-keyboard-open{--il-nav-height:0px}
+ .il-keyboard-open .mobile-nav{display:none!important}
+ .conversation-head{flex-basis:62px!important;height:62px!important;padding:0 6px!important;gap:6px!important}
+ .head-actions button,.back{padding:8px!important}
+ .head-actions svg{width:18px;height:18px}
+ .composer{position:relative!important;bottom:auto!important;min-height:58px!important;padding:6px 5px max(6px,env(safe-area-inset-bottom))!important;gap:3px!important}
+ .composer input{font-size:16px!important;padding:0 7px!important;height:42px!important}
+ .composer button,.composer .attach-button{width:32px!important;flex-basis:32px!important}
+ .composer .send{width:36px!important;flex-basis:36px!important}
+ .messages{padding:12px 10px!important}
+ .message{max-width:88%!important;min-width:0!important}
+ .message audio,.message-audio{width:100%!important;min-width:0!important;max-width:100%!important}
+ .message:has(audio){width:min(300px,88%)!important}
+ .call-controls{max-width:calc(100% - 20px);flex-wrap:wrap;justify-content:center;gap:8px!important}
+ .call-controls button{width:clamp(44px,14vw,58px)!important;height:clamp(44px,14vw,58px)!important;flex:0 0 clamp(44px,14vw,58px)!important}
+ .auth-shell,.auth-card{min-height:var(--il-visible-height)!important}
+}
+@media(max-width:360px){
+ .conversation-head .avatar{width:32px;height:32px;flex-shrink:0}
+ .head-actions button,.back{padding:6px!important}
+ .conversation-head strong{max-width:96px}
+}
+@media(max-height:400px){
+ .call-person .avatar{width:64px!important;height:64px!important}
+ .call-person h2{font-size:18px;margin:8px 0}
+ .call-person p{margin:4px 0}
+ .call-controls button{width:48px!important;height:48px!important;flex-basis:48px!important}
+}
+</style>
+<script id="il-mobile-viewport-script-20261011">
+(function(){
+ var root=document.documentElement,viewport=window.visualViewport,frame=0;
+ function update(){
+  frame=0;
+  if(viewport&&Math.abs(viewport.scale-1)>0.05)return;
+  var height=viewport?viewport.height:window.innerHeight;
+  var top=viewport?viewport.offsetTop:0;
+  var active=document.activeElement;
+  var editing=active&&(active.tagName==="INPUT"||active.tagName==="TEXTAREA"||active.isContentEditable);
+  var keyboard=!!editing&&window.innerHeight-height>100;
+  root.style.setProperty("--il-visible-height",Math.round(height)+"px");
+  root.style.setProperty("--il-visible-top",Math.round(top)+"px");
+  root.classList.toggle("il-keyboard-open",keyboard);
+ }
+ function schedule(){if(!frame)frame=requestAnimationFrame(update)}
+ if(viewport){viewport.addEventListener("resize",schedule);viewport.addEventListener("scroll",schedule)}
+ window.addEventListener("resize",schedule);
+ window.addEventListener("orientationchange",schedule);
+ document.addEventListener("focusin",schedule);
+ document.addEventListener("focusout",schedule);
+ update();
+})();
+</script>
+
 </head>
 <body>
   <div id="root"></div>
