@@ -1,0 +1,60 @@
+(function(){
+ 'use strict';
+ let stream=null, recorder=null, generation=0, cleanup=null;
+ async function open(composer){
+  if(cleanup)cleanup();
+  const overlay=document.createElement('div');overlay.className='chat-camera-overlay';
+  overlay.innerHTML='<div class="chat-camera-head"><button type="button" aria-label="Fechar câmera">✕</button><strong>Câmera da conversa</strong><button type="button" aria-label="Trocar câmera">🔄</button></div><div class="chat-camera-stage"><video autoplay muted playsinline></video><span class="chat-camera-status">Preparando câmera…</span></div><div class="chat-camera-controls"><button type="button" class="take-photo">📷</button><button type="button" class="record-video">● Gravar vídeo</button></div>';
+  document.body.appendChild(overlay);
+  const video=overlay.querySelector('video'),status=overlay.querySelector('.chat-camera-status'),photo=overlay.querySelector('.take-photo'),record=overlay.querySelector('.record-video'),flip=overlay.querySelector('[aria-label="Trocar câmera"]');
+  let devices=[],deviceIndex=0,front=false,previewURL=null,pending=false;
+  function message(text){status.style.display='block';status.textContent=text;}
+  function stop(){if(recorder){recorder.onstop=null;recorder.ondataavailable=null;if(recorder.state!=='inactive')recorder.stop();recorder=null;}if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;}
+  function close(){generation++;stop();if(previewURL)URL.revokeObjectURL(previewURL);overlay.remove();document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',close);if(cleanup===close)cleanup=null;}
+  function hidden(){if(document.hidden)close();}
+  cleanup=close;document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',close);overlay.querySelector('[aria-label="Fechar câmera"]').onclick=close;
+  async function start(){
+   const token=++generation;stop();photo.disabled=record.disabled=flip.disabled=true;
+   try{
+    if(!navigator.mediaDevices?.getUserMedia)throw Error('Abra o site em um navegador com acesso à câmera.');
+    const selected=devices[deviceIndex];
+    let opened;
+    try{opened=await navigator.mediaDevices.getUserMedia({video:selected?{deviceId:{exact:selected.deviceId}}:{facingMode:{ideal:front?'user':'environment'}},audio:false});}
+    catch(e){if(e.name!=='OverconstrainedError'&&e.name!=='NotFoundError')throw e;opened=await navigator.mediaDevices.getUserMedia({video:true,audio:false});}
+    if(token!==generation||!overlay.isConnected){opened.getTracks().forEach(t=>t.stop());return;}
+    stream=opened;video.srcObject=opened;await video.play();
+    if(token!==generation||!overlay.isConnected)return;
+    devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+    const id=opened.getVideoTracks()[0]?.getSettings().deviceId;deviceIndex=Math.max(0,devices.findIndex(d=>d.deviceId===id));
+    photo.disabled=record.disabled=false;flip.disabled=devices.length<2;message('Câmera pronta');
+   }catch(e){if(token!==generation)return;stop();message(e.name==='NotAllowedError'?'Permita a câmera nas configurações do navegador.':e.name==='NotReadableError'?'A câmera está ocupada. Feche outro aplicativo ou chamada e tente novamente.':e.message||'Não foi possível abrir a câmera.');}
+  }
+  function preview(file){
+   stop();photo.disabled=record.disabled=flip.disabled=true;
+   previewURL=URL.createObjectURL(file);const stage=overlay.querySelector('.chat-camera-stage');stage.replaceChildren();
+   const media=document.createElement(file.type.startsWith('image/')?'img':'video');media.className='chat-camera-preview';media.src=previewURL;if(media.tagName==='VIDEO'){media.controls=true;media.playsInline=true;}stage.appendChild(media);
+   const controls=overlay.querySelector('.chat-camera-controls');controls.replaceChildren();
+   for(const [text,action] of [['↻ Refazer',()=>{close();open(composer);}],['Enviar',()=>{const input=composer.querySelector('input.attachment-file');if(!input||!composer.isConnected){alert('Abra a conversa novamente para enviar.');return;}try{const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));close();}catch(e){alert('Não foi possível anexar. Tente selecionar o arquivo pelo botão de anexos.');}}],['Cancelar',close]]){const button=document.createElement('button');button.type='button';button.textContent=text;button.onclick=action;controls.appendChild(button);}
+  }
+  flip.onclick=()=>{if(pending||recorder?.state==='recording')return;deviceIndex=(deviceIndex+1)%devices.length;front=!front;start();};
+  photo.onclick=()=>{if(pending||recorder?.state==='recording')return;if(!video.videoWidth){message('Aguarde a imagem da câmera.');return;}const token=generation;const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);canvas.toBlob(blob=>{if(blob&&token===generation&&overlay.isConnected)preview(new File([blob],'foto-'+Date.now()+'.jpg',{type:'image/jpeg'}));},'image/jpeg',.9);};
+  record.onclick=async()=>{
+   if(recorder?.state==='recording'){record.disabled=true;recorder.stop();return;}
+   if(pending||!stream)return;if(!window.MediaRecorder){message('Este navegador não permite gravar vídeo.');return;}
+   pending=true;record.disabled=photo.disabled=flip.disabled=true;const token=generation;
+   try{
+    if(!stream.getAudioTracks().length){const mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});if(token!==generation||!stream||!overlay.isConnected){mic.getTracks().forEach(t=>t.stop());return;}mic.getAudioTracks().forEach(t=>stream.addTrack(t));}
+    const mime=['video/webm;codecs=vp8,opus','video/webm','video/mp4'].find(t=>MediaRecorder.isTypeSupported(t));
+    recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);const active=recorder,chunks=[];
+    active.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    active.onerror=()=>{stop();message('A gravação falhou. Abra a câmera novamente para tentar.');};
+    active.onstop=()=>{if(token!==generation||!overlay.isConnected)return;const type=active.mimeType||mime||'video/webm';const blob=new Blob(chunks,{type});if(!blob.size){stop();message('O vídeo ficou vazio. Abra a câmera novamente.');return;}preview(new File([blob],'video-'+Date.now()+(type.includes('mp4')?'.mp4':'.webm'),{type}));};
+    recorder.start(1000);record.disabled=false;record.textContent='■ Parar gravação';message('Gravando vídeo com áudio');
+   }catch(e){message('Não foi possível gravar: '+(e.message||e.name));record.disabled=photo.disabled=false;flip.disabled=devices.length<2;}
+   finally{pending=false;}
+  };
+  await start();
+ }
+ function install(){document.querySelectorAll('.composer .camera-share-button').forEach(current=>{if(current.dataset.inChatCamera)return;const button=current.cloneNode(true);button.dataset.modeFix=button.dataset.nativeCamera=button.dataset.inChatCamera='1';current.replaceWith(button);button.type='button';button.setAttribute('aria-label','Abrir câmera na conversa');button.onclick=()=>open(button.closest('.composer'));});}
+ new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});install();
+})();

@@ -39,6 +39,7 @@
         .maybeSingle();
       if (profile.error || !profile.data || profile.data.id === user.id) return;
 
+      if (!confirm("Adicionar " + (profile.data.display_name || profile.data.username) + " aos seus contatos do IL Bate Papo?")) return;
       var result = await c.rpc("accept_contact_link", { p_username: profile.data.username });
       if (result.error) {
         alert("Não foi possível adicionar este contato agora: " + result.error.message);
@@ -122,4 +123,5 @@
     setInterval(check, 12000);
   });
 })();
+
 

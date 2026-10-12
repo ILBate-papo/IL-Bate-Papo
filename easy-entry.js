@@ -15,10 +15,10 @@
   }
 
   function toolsClient(){
-    if(window.__ilbpToolsClient)return window.__ilbpToolsClient;
+    if(window.__ilToolsClient)return window.__ilToolsClient;
     if(!window.supabase)return null;
-    window.__ilbpToolsClient=window.ILBPCreateClient("https://ngidsolvxegpyrprlbex.supabase.co","sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
-    return window.__ilbpToolsClient;
+    window.__ilToolsClient=window.ILBPCreateClient("https://ngidsolvxegpyrprlbex.supabase.co","sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz",{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+    return window.__ilToolsClient;
   }
 
   async function invite(){
