@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  var URL = "https://ngidsolvxegpyrprlbex.supabase.co";
+  var SUPABASE_URL = "https://ngidsolvxegpyrprlbex.supabase.co";
   var KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
   var VAPID_PUBLIC_KEY = "BGq8IGyauun0vKpXPLksb5I_lrhxD89oxschTLQg8kGhKagxDyPOnXd7nTebG796JhAl_SP4KMa68P7Qz2IMp_c";
   var db, user, channel, registration;
@@ -8,7 +8,7 @@
   function logError(stage, error) { console.error("[IL Bate Papo Push] " + stage, error && (error.message || error)); }
   function client() {
     if (db) return db;
-    db = window.__ilbpToolsClient || (window.supabase && window.ILBPCreateClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }));
+    db = window.__ilbpToolsClient || (window.supabase && window.ILBPCreateClient(SUPABASE_URL, KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } }));
     if (db) window.__ilbpToolsClient = db;
     return db;
   }
