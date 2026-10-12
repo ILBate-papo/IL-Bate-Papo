@@ -2,9 +2,12 @@
   'use strict';
   // Keep all authentication clients on the IL Bate Papo's own browser session.
   // This does NOT isolate server-side data: that still requires a dedicated project.
+  const authClients = new Map();
   window.ILBPCreateClient = function (url, key, options) {
+    if(authClients.has(url))return authClients.get(url);
     const opts = {...options, auth: {...options?.auth, storageKey:'ilbp-auth-v1:' + new URL(url).hostname}};
-    return window.supabase.createClient(url, key, opts);
+    const client=window.supabase.createClient(url,key,opts);
+    authClients.set(url,client);window.__ilbpAppClient=client;return client;
   };
   const retryButtons = new WeakMap();
   window.ILBPPlayMedia = async function (element) {
@@ -23,3 +26,4 @@
     }
   };
 })();
+
