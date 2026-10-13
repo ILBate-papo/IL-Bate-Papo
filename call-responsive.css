@@ -11,6 +11,8 @@
 .ilbp-alert-settings{width:100%;max-width:100%;box-sizing:border-box}
 .ilbp-alert-settings button{width:100%!important;min-height:44px;height:auto!important;padding:12px!important;font:14px/1.4 system-ui!important;white-space:normal!important}
 .ilbp-contact-search button{min-height:44px;padding:10px 14px;border:1px solid #19d7ff66;border-radius:10px;background:#0d2637;color:#edf4ff}
+.il-contact-invite.il-invite-in-contacts{position:static!important;transform:none!important;width:calc(100% - 32px)!important;margin:0 16px 12px!important;flex-shrink:0!important}
+.il-contact-invite.il-invite-in-contacts button{min-height:44px!important}
 .incoming-call{
   z-index:30000!important;
   visibility:visible!important;
