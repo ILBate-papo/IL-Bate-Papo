@@ -1,0 +1,16 @@
+const vm=require('vm'),fs=require('fs'),assert=require('assert/strict');
+let handler;const sent=[],events=[];
+const context={window:{addEventListener:(name,callback)=>{handler=callback},dispatchEvent:event=>events.push(event.type)},navigator:{userAgent:'test browser'},location:{origin:'https://ilbate-papo.github.io'},Event:class{constructor(type){this.type=type}}};
+vm.runInNewContext(fs.readFileSync(__dirname+'/native-alerts.js','utf8'),context);
+const api=context.window.ILBPNativeAlerts,port={postMessage:message=>sent.push(JSON.parse(message)),start(){},close(){}};
+assert.equal(api.notify('call','Call','Body','1'),false);
+handler({data:'ilbp-native-notifications',origin:'https://another.example',ports:[port]});assert.equal(api.available,false);
+handler({data:'ilbp-native-notifications',origin:'https://ilbate-papo.github.io',ports:[port]});assert.equal(api.available,true);assert.equal(sent[0].type,'ready');
+port.onmessage({data:JSON.stringify({type:'state',permission:true,backgroundPush:false})});
+assert.equal(api.permission,true);assert.equal(api.backgroundPush,false);assert.equal(events[0],'ilbp-native-alert-state');
+assert.equal(api.notify('audio','a'.repeat(150),'b'.repeat(250),'t'.repeat(140)),true);
+assert.equal(sent[1].title.length,100);assert.equal(sent[1].body.length,180);assert.equal(sent[1].tag.length,100);
+api.enable();assert.equal(sent[2].type,'enable-alerts');
+api.available=false;handler({data:'ilbp-native-notifications',origin:'null',source:null,ports:[port]});assert.equal(api.available,false);
+context.navigator.userAgent='Android; wv ILBatePapo/1.0.3';handler({data:'ilbp-native-notifications',origin:'null',source:null,ports:[port]});assert.equal(api.available,true);
+console.log('Passed: trusted notification port, explicit permission, bounded text, no false background-push claim.');

@@ -22,6 +22,8 @@ import java.io.ByteArrayOutputStream;
 
 public class MainActivity extends Activity {
  private WebView web;
+ private WebMessagePort notificationPort;
+ private boolean notificationTestPending;
  private PermissionRequest pending;
  private ValueCallback<Uri[]> files;
  private String pendingSession;
@@ -32,8 +34,8 @@ public class MainActivity extends Activity {
  private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&HOST.equals(uri.getHost())&&(uri.getPath().isEmpty()||uri.getPath().equals("/")||uri.getPath().equals("/index.html")||uri.getPath().startsWith("/IL-Bate-Papo/"));}
  @Override public void onCreate(Bundle state){super.onCreate(state);web=new WebView(this);setContentView(web);
   web.setOnApplyWindowInsetsListener((view,insets)->{if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.ime());view.setPadding(bars.left,bars.top,bars.right,bars.bottom);}return insets;});
-  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setMediaPlaybackRequiresUserGesture(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-  web.setWebViewClient(new WebViewClient(){@Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();}});
+  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.3");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);s.setMediaPlaybackRequiresUserGesture(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+  web.setWebViewClient(new WebViewClient(){@Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if("ilbp-share".equals(uri.getScheme())){if(request.isForMainFrame()&&request.hasGesture()&&trusted(Uri.parse(view.getUrl()))){String text=uri.getQueryParameter("text");if(text!=null&&text.length()<=4000){Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,text);try{startActivity(Intent.createChooser(share,"Compartilhar contato"));}catch(Exception ignored){new AlertDialog.Builder(MainActivity.this).setMessage("Nenhum aplicativo disponível para compartilhar.").setPositiveButton("OK",null).show();}}}return true;}if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();connectNativeNotifications();}});
   web.setWebChromeClient(new WebChromeClient(){
    @Override public boolean onJsAlert(WebView view,String url,String message,JsResult result){
     if(!trusted(Uri.parse(url))){result.cancel();return true;}
@@ -53,9 +55,35 @@ public class MainActivity extends Activity {
    @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(files!=null)files.onReceiveValue(null);files=callback;try{Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT);pick.setType("*/*");pick.addCategory(Intent.CATEGORY_OPENABLE);pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,params.getMode()==FileChooserParams.MODE_OPEN_MULTIPLE);startActivityForResult(pick,43);}catch(Exception e){files.onReceiveValue(null);files=null;}return true;}
   });
   if(state!=null)web.restoreState(state);else web.loadUrl("https://ilbate-papo.github.io/");
+  web.setDownloadListener((url,agent,disposition,mime,length)->{Uri uri=Uri.parse(url);if(trusted(uri)&&uri.getPath().endsWith(".apk"))try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}});
   handleAuthReturn(getIntent().getData());
  }
 
+ private void sendNotificationState(){
+  if(notificationPort==null)return;
+  try{notificationPort.postMessage(new WebMessage(new JSONObject().put("type","state").put("permission",NativeNotifications.permitted(this)).put("backgroundPush",false).toString()));}catch(Exception ignored){}
+ }
+ private void connectNativeNotifications(){
+  if(web.getUrl()==null||!trusted(Uri.parse(web.getUrl())))return;
+  if(notificationPort!=null)try{notificationPort.close();}catch(Exception ignored){}
+  WebMessagePort[] ports=web.createWebMessageChannel();notificationPort=ports[0];
+  notificationPort.setWebMessageCallback(new WebMessagePort.WebMessageCallback(){@Override public void onMessage(WebMessagePort port,WebMessage message){
+   if(web.getUrl()==null||!trusted(Uri.parse(web.getUrl()))||message.getData()==null||message.getData().length()>2500)return;
+   try{
+    JSONObject data=new JSONObject(message.getData());String type=data.optString("type");
+    if("ready".equals(type)){sendNotificationState();return;}
+    if("enable-alerts".equals(type)){
+     if(!NativeNotifications.permitted(MainActivity.this)&&android.os.Build.VERSION.SDK_INT>=33){notificationTestPending=true;requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},44);}
+     else{NativeNotifications.show(MainActivity.this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");sendNotificationState();}return;
+    }
+    if(!"notify".equals(type))return;
+    String kind=data.optString("kind");if(!java.util.Arrays.asList("message","audio","call","video-call").contains(kind))return;
+    String title=data.optString("title"),body=data.optString("body"),tag=data.optString("tag");
+    NativeNotifications.show(MainActivity.this,kind,title.substring(0,Math.min(100,title.length())),body.substring(0,Math.min(180,body.length())),tag.substring(0,Math.min(100,tag.length())));
+   }catch(Exception ignored){}
+  }});
+  web.postWebMessage(new WebMessage("ilbp-native-notifications",new WebMessagePort[]{ports[1]}),Uri.parse("https://"+HOST));
+ }
  private boolean isGoogleStart(Uri uri){return "https".equals(uri.getScheme())&&"ngidsolvxegpyrprlbex.supabase.co".equals(uri.getHost())&&"/auth/v1/authorize".equals(uri.getPath())&&"google".equals(uri.getQueryParameter("provider"));}
  private SharedPreferences authFlow(){return getSharedPreferences("google_login_pending",MODE_PRIVATE);}
  private void loginError(String message){if(!isFinishing())new AlertDialog.Builder(this).setTitle("Entrar com Google").setMessage(message).setPositiveButton("OK",null).show();}
@@ -97,11 +125,11 @@ public class MainActivity extends Activity {
  }
 
  private void resolvePermission(){if(pending==null)return;ArrayList<String> grant=new ArrayList<>();for(String r:pending.getResources()){if(r.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)&&checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED)grant.add(r);if(r.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)grant.add(r);}if(grant.isEmpty())pending.deny();else pending.grant(grant.toArray(new String[0]));pending=null;}
- @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==42)resolvePermission();}
+ @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==42)resolvePermission();if(request==44){if(notificationTestPending&&NativeNotifications.permitted(this))NativeNotifications.show(this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");notificationTestPending=false;sendNotificationState();}}
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==43&&files!=null){ArrayList<Uri> uris=new ArrayList<>();if(result==RESULT_OK&&data!=null){if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)uris.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)uris.add(data.getData());}files.onReceiveValue(uris.isEmpty()?null:uris.toArray(new Uri[0]));files=null;}}
  @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);web.saveState(state);}
  @Override public void onBackPressed(){if(web.canGoBack())web.goBack();else super.onBackPressed();}
  @Override protected void onPause(){if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('ilbp-pause'))",null);super.onPause();}
- @Override protected void onDestroy(){if(pending!=null)pending.deny();if(files!=null)files.onReceiveValue(null);web.destroy();super.onDestroy();}
+ @Override protected void onDestroy(){if(notificationPort!=null)try{notificationPort.close();}catch(Exception ignored){}if(pending!=null)pending.deny();if(files!=null)files.onReceiveValue(null);web.destroy();super.onDestroy();}
 }
 
