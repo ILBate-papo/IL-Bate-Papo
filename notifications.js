@@ -103,8 +103,7 @@
   function installAlertSettings() {
     if (!("Notification" in window) || !("PushManager" in window)) return;
     var profile=document.querySelector('.profile');if(!profile||profile.querySelector('.il-alert-settings'))return;
-    var section=document.createElement('section');section.className='il-alert-settings';
-    section.className='ilbp-alert-settings';section.style.cssText='padding:12px;border:1px solid #19d7ff55;border-radius:12px;margin:12px 0';
+    var section=document.createElement('section');section.className='il-alert-settings ilbp-alert-settings';section.style.cssText='padding:12px;border:1px solid #19d7ff55;border-radius:12px;margin:12px 0';
     var button=document.createElement('button');button.type='button';button.textContent='🔔 Ativar e testar avisos neste aparelho';button.style.cssText='width:100%;min-height:44px;border:0;border-radius:10px;background:#15c9ef;color:#00131a;font-weight:700';
     var status=document.createElement('p');status.setAttribute('role','status');status.style.cssText='font-size:12px;line-height:1.5;color:#c7d2df;margin:8px 0 0';status.textContent='Ative aqui os avisos de mensagens e chamadas.';
     button.onclick=async function(){button.disabled=true;try{
