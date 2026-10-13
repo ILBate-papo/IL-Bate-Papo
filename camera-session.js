@@ -11,20 +11,20 @@
   let devices=[],deviceIndex=0,front=false,previewURL=null,pending=false;
   function message(text){status.style.display='block';status.textContent=text;}
   function stop(){if(recorder){recorder.onstop=null;recorder.ondataavailable=null;if(recorder.state!=='inactive')recorder.stop();recorder=null;}if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;video.srcObject=null;}
-  function close(){generation++;stop();if(previewURL)URL.revokeObjectURL(previewURL);overlay.remove();document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',close);window.removeEventListener('ilbp-pause',close);window.removeEventListener('popstate',routeChanged);window.removeEventListener('hashchange',routeChanged);observer.disconnect();if(cleanup===close)cleanup=null;}
+  function close(){generation++;stop();if(previewURL)URL.revokeObjectURL(previewURL);overlay.remove();document.removeEventListener('visibilitychange',hidden);window.removeEventListener('pagehide',close);window.removeEventListener('ilbp-pause',close);window.removeEventListener('ilbp-release-camera',close);window.removeEventListener('popstate',routeChanged);window.removeEventListener('hashchange',routeChanged);observer.disconnect();if(cleanup===close)cleanup=null;}
   function hidden(){if(document.hidden)close();}
   function routeChanged(){close();}
   const observer=new MutationObserver(()=>{if(!composer.isConnected)close();});observer.observe(document.body,{childList:true,subtree:true});
   window.addEventListener('popstate',routeChanged);window.addEventListener('hashchange',routeChanged);
-  cleanup=close;document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',close);window.addEventListener('ilbp-pause',close);overlay.querySelector('[aria-label="Fechar câmera"]').onclick=close;
+  cleanup=close;document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',close);window.addEventListener('ilbp-pause',close);window.addEventListener('ilbp-release-camera',close);overlay.querySelector('[aria-label="Fechar câmera"]').onclick=close;
   async function start(){
    const token=++generation;stop();photo.disabled=record.disabled=flip.disabled=true;
    try{
     if(!navigator.mediaDevices?.getUserMedia)throw Error('Abra o site em um navegador com acesso à câmera.');
     const selected=devices[deviceIndex];
     let opened;
-    try{opened=await navigator.mediaDevices.getUserMedia({video:selected?{deviceId:{exact:selected.deviceId}}:{facingMode:{ideal:front?'user':'environment'}},audio:false});}
-    catch(e){if(e.name!=='OverconstrainedError'&&e.name!=='NotFoundError')throw e;opened=await navigator.mediaDevices.getUserMedia({video:true,audio:false});}
+    try{opened=await window.ILBPGetUserMedia({video:selected?{deviceId:{exact:selected.deviceId}}:{facingMode:{ideal:front?'user':'environment'}},audio:false});}
+    catch(e){if(e.name!=='OverconstrainedError'&&e.name!=='NotFoundError')throw e;opened=await window.ILBPGetUserMedia({video:true,audio:false});}
     if(token!==generation||!overlay.isConnected){opened.getTracks().forEach(t=>t.stop());return;}
     stream=opened;video.srcObject=opened;await video.play();
     if(token!==generation||!overlay.isConnected)return;
@@ -50,7 +50,7 @@
     if(!stream.getAudioTracks().some(t=>t.readyState==='live')){
      message('Aguardando permissão do microfone para gravar com áudio…');
      let microphoneExpired=false,timer;
-     const request=navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false}).then(mic=>{if(microphoneExpired||token!==generation||!overlay.isConnected){mic.getTracks().forEach(t=>t.stop());throw new Error('Permissão do microfone demorou. Tente novamente.');}return mic;});
+     const request=window.ILBPGetUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false}).then(mic=>{if(microphoneExpired||token!==generation||!overlay.isConnected){mic.getTracks().forEach(t=>t.stop());throw new Error('Permissão do microfone demorou. Tente novamente.');}return mic;});
      let mic;
      try{mic=await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>{microphoneExpired=true;reject(new Error('A permissão do microfone não respondeu.'));},12000);})]);}
      catch(error){message('Microfone indisponível: '+(error.message||error.name));if(!overlay.isConnected||token!==generation)return;if(!confirm('Não foi possível acessar o microfone. Deseja gravar o vídeo sem áudio?'))throw error;}

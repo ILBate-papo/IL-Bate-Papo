@@ -8,7 +8,7 @@
   const previous=document.activeElement;
   modal=element('dialog');modal.className='ilbp-contact-search';
   modal.style.cssText='width:min(420px,90vw);max-height:85dvh;overflow:auto;background:#07131f;color:white;border:1px solid #19d7ff;border-radius:16px;padding:20px';
-  const title=element('h2','Adicionar pessoa'),close=element('button','Fechar'),form=element('form'),input=element('input'),search=element('button','Buscar'),status=element('p','Busque pelo nome ou pelo @usuário.'),results=element('div');
+  const title=element('h2','Encontrar amigos'),close=element('button','Fechar'),form=element('form'),input=element('input'),search=element('button','Buscar'),status=element('p','Busque pelo nome ou pelo @usuário.'),results=element('div');
   input.placeholder='Nome ou @usuário';input.setAttribute('aria-label','Nome ou usuário');input.style.cssText='box-sizing:border-box;width:100%;padding:14px;margin:12px 0';input.required=true;input.maxLength=80;search.type='submit';close.type='button';
   const dismiss=()=>{request++;modal.remove();modal=null;previous?.focus();};close.onclick=dismiss;modal.addEventListener('cancel',e=>{e.preventDefault();dismiss();});
   form.append(input,search);modal.append(title,close,form,status,results);document.body.append(modal);modal.showModal();input.focus();
@@ -47,5 +47,16 @@
   };
  }
  window.ILBPOpenContactSearch=open;
+ window.ILBPInviteFriends=async function(){
+  const client=db();if(!client){alert('Aguarde o aplicativo carregar.');return;}
+  try{
+   const auth=await client.auth.getUser();
+   if(auth.error||!auth.data?.user)throw Error('Entre na sua conta para convidar amigos.');
+   const result=await client.from('profiles').select('username').eq('id',auth.data.user.id).maybeSingle();
+   if(result.error||!result.data?.username)throw Error('Não foi possível obter seu contato. Tente novamente.');
+   const url=new URL('https://ilbate-papo.github.io/');url.searchParams.set('contato',result.data.username);
+   await window.ILBPShareContact({title:'Meu contato no IL Bate Papo',url:url.href,text:'Converse comigo no IL Bate Papo: '+url.href});
+  }catch(error){alert(error.message||'Não foi possível compartilhar o convite.');}
+ };
  document.addEventListener('click',e=>{const button=e.target.closest('button[title="Convidar ou aceitar contato"]');if(!button)return;e.preventDefault();e.stopImmediatePropagation();open();},true);
 })();

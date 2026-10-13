@@ -1,4 +1,16 @@
 /* Mantém os controles da videochamada dentro da tela em janelas menores. */
+.call-screen video:not(.ilbp-video-ready){opacity:0!important;pointer-events:none!important}
+.call-screen.video:not(.ilbp-remote-ready) .call-person{display:block!important}
+.call-screen.video.ilbp-remote-ready .call-person{display:none!important}
+.call-screen .self-video{overflow:hidden!important}
+.call-screen .self-video video{width:100%;height:100%;object-fit:cover}
+.call-controls button svg,.incoming-call button svg{width:22px!important;height:22px!important;flex:0 0 22px!important}
+.call-screen .remote-video::-webkit-media-controls{display:none!important}
+.ilbp-friend-actions{display:flex;gap:8px;padding:8px 16px;flex-wrap:wrap}
+.ilbp-friend-actions button{min-height:44px;flex:1;padding:10px;border:1px solid #19d7ff55;border-radius:10px;background:#0d2637;color:#edf4ff;font:14px system-ui}
+.ilbp-alert-settings{width:100%;max-width:100%;box-sizing:border-box}
+.ilbp-alert-settings button{width:100%!important;min-height:44px;height:auto!important;padding:12px!important;font:14px/1.4 system-ui!important;white-space:normal!important}
+.ilbp-contact-search button{min-height:44px;padding:10px 14px;border:1px solid #19d7ff66;border-radius:10px;background:#0d2637;color:#edf4ff}
 .incoming-call{
   z-index:30000!important;
   visibility:visible!important;

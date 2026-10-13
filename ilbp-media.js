@@ -1,5 +1,47 @@
 (function () {
   'use strict';
+  let captureQueue = Promise.resolve();
+  window.ILBPGetUserMedia = function (constraints) {
+    const capture = async () => {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não oferece acesso à câmera e ao microfone.');
+      try { return await navigator.mediaDevices.getUserMedia(constraints); }
+      catch (error) {
+        if (!['NotReadableError','AbortError','OverconstrainedError'].includes(error.name)) throw error;
+        // Retry only device-start failures, never a denied permission.
+        await new Promise(resolve => setTimeout(resolve, 350));
+        return navigator.mediaDevices.getUserMedia({
+          audio: constraints.audio ? true : false,
+          video: constraints.video || false
+        });
+      }
+    };
+    const result = captureQueue.then(capture);
+    captureQueue = result.catch(() => {});
+    return result;
+  };
+  window.ILBPMediaError = function (error) {
+    if (error?.name === 'NotAllowedError') return 'Permita o microfone e a câmera nas configurações do aplicativo ou do navegador.';
+    if (error?.name === 'NotReadableError' || error?.name === 'AbortError') return 'Não foi possível iniciar o microfone ou a câmera. Feche outras chamadas e tente novamente.';
+    if (error?.name === 'NotFoundError') return 'O aparelho não encontrou o microfone ou a câmera.';
+    return error?.message || 'Não foi possível abrir o microfone ou a câmera.';
+  };
+  if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
+    function prepareVideos() {
+      document.querySelectorAll('.call-screen video').forEach(video => {
+        if (video.dataset.ilbpReadyBound) return;
+        video.dataset.ilbpReadyBound = '1';
+        const update = () => {
+          const ready = video.readyState >= 2 && video.videoWidth > 0;
+          video.classList.toggle('ilbp-video-ready', ready);
+          if (video.classList.contains('remote-video')) video.closest('.call-screen')?.classList.toggle('ilbp-remote-ready', ready);
+        };
+        ['loadeddata','playing','emptied','ended'].forEach(event => video.addEventListener(event, update));
+        update();
+      });
+    }
+    new MutationObserver(prepareVideos).observe(document.documentElement, {childList:true,subtree:true});
+    prepareVideos();
+  }
   // Keep all authentication clients on the IL Bate Papo's own browser session.
   // This does NOT isolate server-side data: that still requires a dedicated project.
   const authClients = new Map();

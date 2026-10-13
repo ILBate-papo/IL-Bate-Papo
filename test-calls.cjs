@@ -8,7 +8,7 @@ const query={select(){return this;},eq(){return this;},order:async()=>({data:[]}
 const A={from:()=>query,channel:()=>({on(_type,_filter,cb){activeCallback=cb;return this;},subscribe(cb){subscribeCallback=cb;return this;}}),removeChannel(){}};
 const S={useRef:()=>({current:null}),useState:x=>[x,x=>states.push(x)],useEffect:fn=>effects.push(fn)};
 const j={jsx:(type,props)=>({type,...props}),jsxs:(type,props)=>({type,...props})};
-const context={A,S,j,MediaStream:class{},RTCPeerConnection:PC,navigator:{mediaDevices:{getUserMedia:async()=>stream}},window:{ILChatsGetUserMedia:async()=>stream,ILChatsPlayMedia:async()=>{}},console,Oe:'brand',Ae:'avatar',E:'icon',de:'icon',Ce:'icon',ie:'icon',O:'icon'};
+const context={A,S,j,MediaStream:class{},RTCPeerConnection:PC,navigator:{mediaDevices:{getUserMedia:async()=>stream}},window:{dispatchEvent(){},ILBPMediaError:e=>e.message,ILBPGetUserMedia:async()=>stream,ILBPPlayMedia:async()=>{}},console,Event:class{},Oe:'brand',Ae:'avatar',E:'icon',de:'icon',Ce:'icon',ie:'icon',O:'icon'};
 vm.createContext(context);vm.runInContext(component,context);
 const tree=context.Ne({call:{mode:'audio',direction:'outgoing',callId:'c1',conversationId:'conversation',peer:{id:'peer',name:'Peer'}},currentUserId:'self',onMute(){},onCamera(){},onEnd:()=>ended++,notify:x=>states.push(x)});const cleanup=effects[0]();for(let i=0;i<8;i++)await Promise.resolve();
 await subscribeCallback('SUBSCRIBED');await subscribeCallback('SUBSCRIBED');assert.equal(sent.filter(s=>s.signal_type==='offer').length,1,'reconnect must not send duplicate offers');
