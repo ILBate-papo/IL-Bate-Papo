@@ -1,0 +1,23 @@
+{
+  "commit": "a349471d0c078e332d59a075ccbe9074ebd9b54c",
+  "android_build": "BUILD SUCCESSFUL; release unsigned",
+  "package": "br.com.ilbatepapo.app",
+  "version": "1.0.4",
+  "versionCode": 5,
+  "unsigned_apk_sha256": "08fc61d2fbde6ebaf07be387cae4c0fa539c0e3197d4d5ab5be357cfc783a4b6",
+  "original_certificate_sha256": "38467574e0deffa69c74cdee241a6488842dde48238ce07b69fc8bd2558ac3c6",
+  "tests_passed": [
+    "test-native-alerts.cjs",
+    "test-media.cjs",
+    "test-capture.cjs",
+    "test-responsive.cjs",
+    "test-media-layout.cjs",
+    "test-push-server.cjs",
+    "test-fcm.cjs"
+  ],
+  "website_published": false,
+  "server_deployed": false,
+  "physical_device_tested": false,
+  "signing_key_available": false,
+  "signing_key_backed_up": false
+}
