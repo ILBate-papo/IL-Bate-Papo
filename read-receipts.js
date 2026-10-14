@@ -9,6 +9,15 @@
   var lastConversationId = "";
   var refreshing = false;
   var warned = new Set();
+  var receiptChannel=null,watchedConversation='',domSignature='';
+  function watchConversation(db,id){
+    if(watchedConversation===id)return;
+    if(receiptChannel)db.removeChannel(receiptChannel);
+    watchedConversation=id;
+    receiptChannel=db.channel('ilbp-receipts-'+userId+'-'+id)
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'conversation_id=eq.'+id},function(){refresh();})
+      .subscribe();
+  }
   function report(stage,error){if(error&&!warned.has(stage)){warned.add(stage);console.warn('[IL Bate Papo] Confirmação '+stage+':',error.message||error);}}
 
   function getClient() {
@@ -93,7 +102,8 @@
         time.appendChild(mark);
       }
       var row = byId.get(bubble.dataset.messageId) || {};
-      mark.textContent = row.read_at || row.delivered_at ? "✓✓" : "✓";
+      var text=row.read_at || row.delivered_at ? "✓✓" : "✓";
+      if(mark.textContent!==text)mark.textContent=text;
       mark.classList.toggle("is-read", Boolean(row.read_at));
       mark.title = row.read_at ? "Lida" : row.delivered_at ? "Entregue" : "Enviada";
     });
@@ -104,6 +114,7 @@
     if (!db || !userId || refreshing) return;
     var conversationId = activeConversationId();
     if (!conversationId) return;
+    watchConversation(db,conversationId);
     var account=userId;refreshing=true;
     try {
     lastConversationId = conversationId;
@@ -122,7 +133,7 @@
   async function start() {
     await loadConversations();
     await refresh();
-    var db=getClient();if(db)db.auth.onAuthStateChange(function(){userId='';conversationMap={};setTimeout(function(){loadConversations().then(refresh).catch(function(error){report('da sessão',error);});},0);});
+    var db=getClient();if(db)db.auth.onAuthStateChange(function(){if(receiptChannel)db.removeChannel(receiptChannel);receiptChannel=null;watchedConversation='';userId='';conversationMap={};setTimeout(function(){loadConversations().then(refresh).catch(function(error){report('da sessão',error);});},0);});
     setInterval(refresh, 3500);
     setInterval(loadConversations, 30000);
   }
@@ -130,6 +141,9 @@
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible" && lastConversationId) refresh();
   });
+  if(typeof MutationObserver!=='undefined')new MutationObserver(function(){
+    var signature=activeConversationId()+'|'+Array.from(document.querySelectorAll('.messages .message.me')).map(function(b){return b.dataset.messageId+':'+Boolean(b.querySelector('.il-read-receipt'));}).join(',');
+    if(signature===domSignature)return;domSignature=signature;refresh();
+  }).observe(document.documentElement,{childList:true,subtree:true});
   window.addEventListener("load", function () { setTimeout(start, 1000); });
 })();
-
