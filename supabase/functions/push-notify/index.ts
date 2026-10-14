@@ -1,3 +1,4 @@
+import { sendFcm } from "./fcm.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 
@@ -59,17 +60,21 @@ Deno.serve(async (request) => {
       body: isCall ? `${sender} está ligando para você.` : String(body.preview || "Nova mensagem").slice(0, 140),
       app_id: app.id,
       mode: body.mode,
+      attachment_type: body.attachment_type,
       call_id: body.call_id,
       created_at: new Date().toISOString(),
       tag: isCall ? `call-${body.call_id}` : `message-${body.conversation_id}`,
       url: "/",
     });
-    const { data: subscriptions } = await admin.from("push_subscriptions").select("id,subscription").in("user_id", recipients).contains("subscription", { app_id: app.id });
+    const { data: subscriptions } = await admin.from("push_subscriptions").select("id,user_id,subscription").in("user_id", recipients).contains("subscription", { app_id: app.id });
     let sent = 0;
     let failed = 0;
     for (const item of subscriptions || []) {
       try {
-        await webpush.sendNotification(item.subscription, payload, {
+        if (item.subscription.transport === "fcm") {
+          if(app.id!=="ilbp")throw new Error("FCM_APP_MISMATCH");
+          await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload));
+        } else await webpush.sendNotification(item.subscription, payload, {
           TTL: isCall ? 90 : 86400,
           urgency: isCall ? "high" : "normal",
           topic: isCall ? (`call-${String(body.call_id).replace(/[^a-zA-Z0-9_-]/g, "")}`).slice(0, 32) : undefined,

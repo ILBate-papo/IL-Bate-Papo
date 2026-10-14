@@ -47,17 +47,7 @@
   const authClients = new Map();
   window.ILBPCreateClient = function (url, key, options) {
     if(authClients.has(url))return authClients.get(url);
-    const hostname=new URL(url).hostname,storageKey='ilbp-auth-v1:' + hostname;
-    // Preserve this site's existing login when upgrading its legacy client.
-    // Never overwrite the app's current session or remove the legacy copy.
-    try{
-      const storage=window.localStorage;
-      if(storage&&!storage.getItem(storageKey)){
-        const legacy=storage.getItem('sb-'+hostname.split('.')[0]+'-auth-token');
-        if(legacy){const session=JSON.parse(legacy);if(session.access_token&&session.refresh_token)storage.setItem(storageKey,legacy);}
-      }
-    }catch{}
-    const opts = {...options, auth: {...options?.auth, storageKey}};
+    const opts = {...options, auth: {...options?.auth, storageKey:'ilbp-auth-v1:' + new URL(url).hostname}};
     const client=window.supabase.createClient(url,key,opts);
     authClients.set(url,client);window.__ilbpAppClient=client;return client;
   };
