@@ -10,12 +10,14 @@
  }
  async function unlock(){
   const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return false;
-  context ||= new Audio();
-  if(context.state==='suspended'){
+  if(!context||context.state==='closed')context=new Audio();
+  const wasRunning=context.state==='running';
+  if(context.state==='suspended'||context.state==='interrupted'){
    resuming ||= context.resume().finally(()=>{resuming=null;});await resuming;
   }
   if(context.state!=='running')return false;
   document.getElementById('ilbp-unlock-sound')?.remove();
+  if(!wasRunning){for(const kind of ['incoming','outgoing'])if(active[kind])pattern(kind);}
   if(pendingMessage&&Date.now()-pendingMessage<15000){pendingMessage=0;pattern('message');}
   window.dispatchEvent(new Event('ilbp-sound-state'));return true;
  }
@@ -43,6 +45,10 @@
   async test(){if(!await unlock())throw new Error('Não foi possível ativar o som neste navegador.');pattern('message');}
  };
  document.addEventListener('pointerdown',()=>{unlock().catch(()=>{});},{passive:true});document.addEventListener('keydown',()=>{unlock().catch(()=>{});});
+ function recover(){if(document.hidden||!context)return;unlock().then(ok=>{if(!ok)prompt();}).catch(()=>prompt());}
+ document.addEventListener('visibilitychange',recover);
+ window.addEventListener('pageshow',recover);
+ window.addEventListener('focus',recover);
  window.addEventListener('pagehide',()=>{stop('incoming');stop('outgoing');stop('message');});
  function install(){
   const profile=document.querySelector('.profile');if(!profile||profile.querySelector('.ilbp-sound-test'))return;
@@ -54,3 +60,4 @@
  }
  new MutationObserver(install).observe(document.documentElement,{childList:true,subtree:true});install();
 })();
+
