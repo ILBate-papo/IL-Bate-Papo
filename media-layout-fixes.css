@@ -12,3 +12,15 @@
 .call-screen .self-video.ilbp-preview-expanded video{object-fit:contain!important;}
 .mobile-nav svg{display:block!important;width:22px!important;height:22px!important;margin:0 auto 4px;}
 .ilbp-action-icon{display:inline-block;margin-right:8px;font-size:20px;flex:0 0 auto;}
+.incoming-call button{width:58px!important;height:58px!important;flex:0 0 58px!important;display:flex!important;flex-direction:column;gap:3px;border-radius:16px!important;font-size:11px!important;}
+.incoming-call button span{margin:0!important;font-size:11px!important;color:inherit!important;}
+.incoming-call>div:nth-child(2){overflow:hidden;}
+.incoming-call strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(max-width:680px){
+ .incoming-call{top:auto!important;transform:none!important;height:auto!important;min-height:0!important;min-width:0!important;padding:12px!important;gap:8px!important;}
+ .incoming-call>.avatar{width:36px!important;height:36px!important;flex:0 0 36px!important;}
+ .call-controls button{width:64px!important;height:64px!important;flex-basis:64px!important;font-size:11px!important;}
+ .call-controls svg{width:24px!important;height:24px!important;}
+ .call-screen{padding-bottom:max(16px,env(safe-area-inset-bottom))!important;}
+}
+@media(max-height:400px){.call-controls button{width:52px!important;height:52px!important;flex-basis:52px!important;}}

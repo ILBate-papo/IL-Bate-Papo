@@ -47,30 +47,13 @@
   }
   async function senderName(id) { var result = await client().from("profiles").select("display_name").eq("id", id).maybeSingle(); return result.data && result.data.display_name || "Alguém"; }
 
-  function unlockMessageAudio() {
-    try {
-      var C=window.AudioContext||window.webkitAudioContext;if(!C)return;
-      var ctx=window.__ilMessageAudio||(window.__ilMessageAudio=new C());
-      if(ctx.state==='suspended')ctx.resume().catch(function(){});
-    } catch (_) {}
-  }
-  function foregroundMessageAlert() {
-    try {
-      if(navigator.vibrate)navigator.vibrate([180,90,180]);
-      var ctx=window.__ilMessageAudio;if(!ctx||ctx.state!=='running')return;
-      var o=ctx.createOscillator(),g=ctx.createGain(),now=ctx.currentTime;
-      o.frequency.value=880;g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.12,now+.015);g.gain.exponentialRampToValueAtTime(.0001,now+.16);
-      o.connect(g).connect(ctx.destination);o.start(now);o.stop(now+.18);
-    } catch (_) {}
-  }
-  document.addEventListener('pointerdown',unlockMessageAudio,{passive:true});
-  document.addEventListener('keydown',unlockMessageAudio);
+  function foregroundMessageAlert(id) { window.ILBPSounds?.message('message-'+id);if(navigator.vibrate)navigator.vibrate([180,90,180]); }
 
   async function onMessage(row) {
     if (!user || !row || row.sender_id === user.id || seen.has("m:" + row.id)) return;
     seen.add("m:" + row.id);
     if(window.ILBPNativeAlerts?.notify(row.attachment_type==="audio"?"audio":"message","Nova mensagem no IL Bate Papo",row.body||({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type]||"Você recebeu uma mensagem.","message-"+row.id))return;
-    try { if(document.visibilityState==="visible")foregroundMessageAlert(); var name = await senderName(row.sender_id); var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
+    try { if(document.visibilityState==="visible")foregroundMessageAlert(row.id); var name = await senderName(row.sender_id); var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
   }
   async function onCall(row) {
     if (!user || !row || row.recipient_id !== user.id || row.signal_type !== "offer" || seen.has("c:" + row.call_id)) return;
