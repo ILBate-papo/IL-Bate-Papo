@@ -2,6 +2,7 @@
  'use strict';
  let stream=null, recorder=null, generation=0, cleanup=null;
  async function open(composer){
+  if(document.querySelector(".call-screen")){alert("Encerre a chamada antes de gravar com a câmera da conversa.");return;}
   if(cleanup)cleanup();
   document.querySelectorAll('.chat-camera-overlay').forEach(node=>node.remove());
   const overlay=document.createElement('div');overlay.className='chat-camera-overlay';
@@ -18,7 +19,7 @@
   window.addEventListener('popstate',routeChanged);window.addEventListener('hashchange',routeChanged);
   cleanup=close;document.addEventListener('visibilitychange',hidden);window.addEventListener('pagehide',close);window.addEventListener('ilbp-pause',close);window.addEventListener('ilbp-release-camera',close);overlay.querySelector('[aria-label="Fechar câmera"]').onclick=close;
   async function start(){
-   const token=++generation;stop();photo.disabled=record.disabled=flip.disabled=true;
+   const token=++generation;stop();await new Promise(resolve=>setTimeout(resolve,180));if(token!==generation||!overlay.isConnected)return;photo.disabled=record.disabled=flip.disabled=true;
    try{
     if(!navigator.mediaDevices?.getUserMedia)throw Error('Abra o site em um navegador com acesso à câmera.');
     const selected=devices[deviceIndex];
@@ -63,7 +64,7 @@
     active.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
     active.onerror=event=>{stop();record.textContent='● Gravar vídeo';message('A gravação falhou: '+(event.error?.message||event.error?.name||'Abra a câmera novamente para tentar.'));};
     active.onstop=()=>{if(token!==generation||!overlay.isConnected)return;const type=active.mimeType||mime||'video/webm';const blob=new Blob(chunks,{type});if(!blob.size){stop();message('O vídeo ficou vazio. Abra a câmera novamente.');return;}preview(new File([blob],'video-'+Date.now()+(type.includes('mp4')?'.mp4':'.webm'),{type}));};
-    recorder.start();record.disabled=false;record.textContent='■ Parar gravação';message(stream.getAudioTracks().some(t=>t.readyState==='live')?'Gravando vídeo com áudio':'Gravando vídeo sem áudio');
+    recorder.start(1000);record.disabled=false;record.textContent='■ Parar gravação';message(stream.getAudioTracks().some(t=>t.readyState==='live')?'Gravando vídeo com áudio':'Gravando vídeo sem áudio');
    }catch(e){if(token===generation&&overlay.isConnected){message('Não foi possível gravar: '+(e.message||e.name));record.disabled=photo.disabled=false;flip.disabled=devices.length<2;}}
    finally{pending=false;}
   };

@@ -44,6 +44,7 @@
             type: "message",
             sender_id: row.sender_id,
             conversation_id: row.conversation_id,
+            attachment_type: row.attachment_type,
             preview: row.body || ({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type] || "Você recebeu uma mensagem."
           }, headers);
         }
