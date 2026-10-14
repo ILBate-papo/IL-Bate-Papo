@@ -1,7 +1,18 @@
-plugins { id 'com.android.application' }
+plugins { id 'com.android.application'; id 'com.google.gms.google-services' }
 android {
  namespace 'br.com.ilbatepapo.app'
  compileSdk 35
- defaultConfig { applicationId 'br.com.ilbatepapo.app'; minSdk 26; targetSdk 35; versionCode 4; versionName '1.0.3' }
+ defaultConfig { applicationId 'br.com.ilbatepapo.app'; minSdk 26; targetSdk 35; versionCode 5; versionName '1.0.4' }
  buildTypes { release { minifyEnabled false } }
 }
+
+// Credentials for release signing stay outside the repository.
+def keyFile = System.getenv('ILBP_KEYSTORE')
+android {
+ compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+ if (keyFile) {
+  signingConfigs { original { storeFile file(keyFile); storePassword System.getenv('ILBP_STORE_PASSWORD'); keyAlias System.getenv('ILBP_KEY_ALIAS'); keyPassword System.getenv('ILBP_KEY_PASSWORD') } }
+  buildTypes { release { signingConfig signingConfigs.original } }
+ }
+}
+dependencies { implementation platform('com.google.firebase:firebase-bom:34.7.0'); implementation 'com.google.firebase:firebase-messaging' }

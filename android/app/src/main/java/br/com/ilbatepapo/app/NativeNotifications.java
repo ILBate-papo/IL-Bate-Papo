@@ -30,10 +30,12 @@ public final class NativeNotifications {
   String channel="video-call".equals(kind)?"ilbp-video-calls-v1":"call".equals(kind)?"ilbp-voice-calls-v1":"audio".equals(kind)?"ilbp-audio-v1":"ilbp-messages-v1";
   Intent intent=new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent open=PendingIntent.getActivity(context,0,intent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-  Notification notification=new Notification.Builder(context,channel).setSmallIcon(android.R.drawable.stat_notify_chat)
+  Notification.Builder builder=new Notification.Builder(context,channel).setSmallIcon(android.R.drawable.stat_notify_chat)
    .setContentTitle(title).setContentText(body).setStyle(new Notification.BigTextStyle().bigText(body))
    .setCategory(call?Notification.CATEGORY_CALL:Notification.CATEGORY_MESSAGE).setVisibility(Notification.VISIBILITY_PRIVATE)
-   .setContentIntent(open).setAutoCancel(true).setShowWhen(true).setWhen(System.currentTimeMillis()).build();
+   .setContentIntent(open).setAutoCancel(true).setShowWhen(true).setWhen(System.currentTimeMillis());
+  if(call)builder.setTimeoutAfter(90000);
+  Notification notification=builder.build();
   context.getSystemService(NotificationManager.class).notify(tag,call?2:1,notification);return true;
  }
 }

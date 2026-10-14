@@ -34,7 +34,7 @@ public class MainActivity extends Activity {
  private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&HOST.equals(uri.getHost())&&(uri.getPath().isEmpty()||uri.getPath().equals("/")||uri.getPath().equals("/index.html")||uri.getPath().startsWith("/IL-Bate-Papo/"));}
  @Override public void onCreate(Bundle state){super.onCreate(state);web=new WebView(this);setContentView(web);
   web.setOnApplyWindowInsetsListener((view,insets)->{if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.ime());view.setPadding(bars.left,bars.top,bars.right,bars.bottom);}return insets;});
-  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.3");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);s.setMediaPlaybackRequiresUserGesture(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.4");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->{PushState.token(this,token);sendNotificationState();});s.setMediaPlaybackRequiresUserGesture(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
   web.setWebViewClient(new WebViewClient(){@Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if("ilbp-share".equals(uri.getScheme())){if(request.isForMainFrame()&&request.hasGesture()&&trusted(Uri.parse(view.getUrl()))){String text=uri.getQueryParameter("text");if(text!=null&&text.length()<=4000){Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,text);try{startActivity(Intent.createChooser(share,"Compartilhar contato"));}catch(Exception ignored){new AlertDialog.Builder(MainActivity.this).setMessage("Nenhum aplicativo disponível para compartilhar.").setPositiveButton("OK",null).show();}}}return true;}if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();connectNativeNotifications();}});
   web.setWebChromeClient(new WebChromeClient(){
    @Override public boolean onJsAlert(WebView view,String url,String message,JsResult result){
@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
 
  private void sendNotificationState(){
   if(notificationPort==null)return;
-  try{notificationPort.postMessage(new WebMessage(new JSONObject().put("type","state").put("permission",NativeNotifications.permitted(this)).put("backgroundPush",false).toString()));}catch(Exception ignored){}
+  try{notificationPort.postMessage(new WebMessage(new JSONObject().put("type","state").put("permission",NativeNotifications.permitted(this)).put("backgroundPush",!PushState.token(this).isEmpty()).put("fcmToken",PushState.token(this)).toString()));}catch(Exception ignored){}
  }
  private void connectNativeNotifications(){
   if(web.getUrl()==null||!trusted(Uri.parse(web.getUrl())))return;
@@ -71,6 +71,7 @@ public class MainActivity extends Activity {
    if(web.getUrl()==null||!trusted(Uri.parse(web.getUrl()))||message.getData()==null||message.getData().length()>2500)return;
    try{
     JSONObject data=new JSONObject(message.getData());String type=data.optString("type");
+    if("push-account".equals(type)){String id=data.optString("userId");if(id.isEmpty()||id.matches("[a-fA-F0-9-]{36}"))PushState.account(MainActivity.this,id);return;}
     if("ready".equals(type)){sendNotificationState();return;}
     if("enable-alerts".equals(type)){
      if(!NativeNotifications.permitted(MainActivity.this)&&android.os.Build.VERSION.SDK_INT>=33){notificationTestPending=true;requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},44);}

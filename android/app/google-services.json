@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1381247553",
+    "project_id": "il-bate-papo-20261013-c1e4c",
+    "storage_bucket": "il-bate-papo-20261013-c1e4c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1381247553:android:bf1bee91a255e4c97034c0",
+        "android_client_info": {
+          "package_name": "br.com.ilbatepapo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0XyaCuwsfLr1d9gGP_v87GXmz20afNDQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
