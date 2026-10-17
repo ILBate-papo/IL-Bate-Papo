@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 
 public class MainActivity extends Activity {
  private WebView web;
+ private boolean loadErrorShowing;
  private WebMessagePort notificationPort;
  private boolean notificationTestPending;
  private PermissionRequest pending;
@@ -30,12 +31,14 @@ public class MainActivity extends Activity {
  private static final String SUPABASE="https://ngidsolvxegpyrprlbex.supabase.co";
  private static final String PUBLIC_KEY="sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
  private static final String CALLBACK="br.com.ilbatepapo.app://auth-callback";
- private static final String HOST="ilbate-papo.github.io";
- private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&HOST.equals(uri.getHost())&&(uri.getPath().isEmpty()||uri.getPath().equals("/")||uri.getPath().equals("/index.html")||uri.getPath().startsWith("/IL-Bate-Papo/"));}
- @Override public void onCreate(Bundle state){super.onCreate(state);web=new WebView(this);setContentView(web);
+ private static final String HOST="bate.papo.il-talk.com.br";
+ private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&(HOST.equals(uri.getHost())||"ilbate-papo.github.io".equals(uri.getHost()))&&(uri.getPath().isEmpty()||uri.getPath().equals("/")||uri.getPath().equals("/index.html")||uri.getPath().startsWith("/IL-Bate-Papo/"));}
+ @Override public void onCreate(Bundle state){super.onCreate(state);web=new WebView(this);web.setBackgroundColor(android.graphics.Color.rgb(7,21,34));setContentView(web);
   web.setOnApplyWindowInsetsListener((view,insets)->{if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.ime());view.setPadding(bars.left,bars.top,bars.right,bars.bottom);}return insets;});
   WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.4");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->{PushState.token(this,token);sendNotificationState();});s.setMediaPlaybackRequiresUserGesture(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-  web.setWebViewClient(new WebViewClient(){@Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if("ilbp-share".equals(uri.getScheme())){if(request.isForMainFrame()&&request.hasGesture()&&trusted(Uri.parse(view.getUrl()))){String text=uri.getQueryParameter("text");if(text!=null&&text.length()<=4000){Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,text);try{startActivity(Intent.createChooser(share,"Compartilhar contato"));}catch(Exception ignored){new AlertDialog.Builder(MainActivity.this).setMessage("Nenhum aplicativo disponível para compartilhar.").setPositiveButton("OK",null).show();}}}return true;}if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();connectNativeNotifications();}});
+  web.setWebViewClient(new WebViewClient(){@Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showLoadError();}
+   @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){if(request.isForMainFrame()&&response.getStatusCode()>=400)showLoadError();}
+   @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if("ilbp-share".equals(uri.getScheme())){if(request.isForMainFrame()&&request.hasGesture()&&trusted(Uri.parse(view.getUrl()))){String text=uri.getQueryParameter("text");if(text!=null&&text.length()<=4000){Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,text);try{startActivity(Intent.createChooser(share,"Compartilhar contato"));}catch(Exception ignored){new AlertDialog.Builder(MainActivity.this).setMessage("Nenhum aplicativo disponível para compartilhar.").setPositiveButton("OK",null).show();}}}return true;}if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();connectNativeNotifications();}});
   web.setWebChromeClient(new WebChromeClient(){
    @Override public boolean onJsAlert(WebView view,String url,String message,JsResult result){
     if(!trusted(Uri.parse(url))){result.cancel();return true;}
@@ -54,9 +57,19 @@ public class MainActivity extends Activity {
    @Override public void onPermissionRequestCanceled(PermissionRequest request){if(pending==request)pending=null;}
    @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){if(files!=null)files.onReceiveValue(null);files=callback;try{Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT);pick.setType("*/*");pick.addCategory(Intent.CATEGORY_OPENABLE);pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,params.getMode()==FileChooserParams.MODE_OPEN_MULTIPLE);startActivityForResult(pick,43);}catch(Exception e){files.onReceiveValue(null);files=null;}return true;}
   });
-  if(state!=null)web.restoreState(state);else web.loadUrl("https://ilbate-papo.github.io/");
+  if(state!=null)web.restoreState(state);else web.loadUrl("https://bate.papo.il-talk.com.br/");
   web.setDownloadListener((url,agent,disposition,mime,length)->{Uri uri=Uri.parse(url);if(trusted(uri)&&uri.getPath().endsWith(".apk"))try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}});
   handleAuthReturn(getIntent().getData());
+ }
+
+ private void showLoadError(){
+  if(isFinishing()||loadErrorShowing)return;
+  loadErrorShowing=true;
+  new AlertDialog.Builder(this).setTitle("IL Bate Papo")
+   .setMessage("Não foi possível abrir o chat. Confira sua conexão e tente novamente.")
+   .setPositiveButton("Tentar novamente",(dialog,which)->web.loadUrl("https://bate.papo.il-talk.com.br/"))
+   .setNegativeButton("Sair",(dialog,which)->finish())
+   .setOnDismissListener(dialog->loadErrorShowing=false).show();
  }
 
  private void sendNotificationState(){
@@ -83,7 +96,7 @@ public class MainActivity extends Activity {
     NativeNotifications.show(MainActivity.this,kind,title.substring(0,Math.min(100,title.length())),body.substring(0,Math.min(180,body.length())),tag.substring(0,Math.min(100,tag.length())));
    }catch(Exception ignored){}
   }});
-  web.postWebMessage(new WebMessage("ilbp-native-notifications",new WebMessagePort[]{ports[1]}),Uri.parse("https://"+HOST));
+  web.postWebMessage(new WebMessage("ilbp-native-notifications",new WebMessagePort[]{ports[1]}),Uri.parse("https://"+Uri.parse(web.getUrl()).getHost()));
  }
  private boolean isGoogleStart(Uri uri){return "https".equals(uri.getScheme())&&"ngidsolvxegpyrprlbex.supabase.co".equals(uri.getHost())&&"/auth/v1/authorize".equals(uri.getPath())&&"google".equals(uri.getQueryParameter("provider"));}
  private SharedPreferences authFlow(){return getSharedPreferences("google_login_pending",MODE_PRIVATE);}
@@ -113,7 +126,7 @@ public class MainActivity extends Activity {
     ByteArrayOutputStream bytes=new ByteArrayOutputStream();try(InputStream input=connection.getInputStream()){byte[] buffer=new byte[4096];int n;while((n=input.read(buffer))!=-1){bytes.write(buffer,0,n);if(bytes.size()>262144)throw new Exception("response_too_large");}}
     JSONObject session=new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8));String access=session.getString("access_token"),refresh=session.getString("refresh_token");if(access.isEmpty()||refresh.isEmpty())throw new Exception("invalid_session");
     String payload=new JSONObject().put("access_token",access).put("refresh_token",refresh).toString();
-    runOnUiThread(()->{if(isFinishing())return;pendingSession=payload;if(web.getUrl()!=null&&trusted(Uri.parse(web.getUrl())))applyPendingSession();else web.loadUrl("https://ilbate-papo.github.io/");});
+    runOnUiThread(()->{if(isFinishing())return;pendingSession=payload;if(web.getUrl()!=null&&trusted(Uri.parse(web.getUrl())))applyPendingSession();else web.loadUrl("https://bate.papo.il-talk.com.br/");});
    }catch(Exception error){runOnUiThread(()->loginError("Não foi possível concluir o login. Confira a internet e tente entrar novamente."));}
    finally{if(connection!=null)connection.disconnect();}
   }).start();
