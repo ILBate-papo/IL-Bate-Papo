@@ -1,21 +1,42 @@
 (function(){
  'use strict';
- let context=null,resuming=null,pendingMessage=0;
+ let context=null,resuming=null,pendingMessage=0,promptDismissed=false;
  const nodes={message:new Set(),incoming:new Set(),outgoing:new Set()},timers={},active={},seen=new Set();
  function prompt(){
-  if(document.getElementById('ilbp-unlock-sound'))return;
-  const button=document.createElement('button');button.id='ilbp-unlock-sound';button.type='button';button.textContent='🔊 Ativar som neste aparelho';
-  button.style.cssText='position:fixed;top:76px;left:50%;transform:translateX(-50%);z-index:25000;padding:12px;border-radius:12px;border:1px solid #19d7ff;background:#07111f;color:white';
-  button.onclick=()=>unlock().catch(()=>{button.textContent='🔊 Toque para tentar ativar o som';});document.body.appendChild(button);
+  if(promptDismissed||document.getElementById('ilbp-unlock-sound'))return;
+  const box=document.createElement('div');box.id='ilbp-unlock-sound';
+  box.style.cssText='position:fixed;bottom:84px;left:50%;transform:translateX(-50%);z-index:25000;box-sizing:border-box;width:calc(100% - 32px);max-width:360px;padding:10px;border-radius:12px;border:1px solid #19d7ff;background:#07111f;color:white;display:flex;gap:8px;align-items:center;font:14px/1.4 system-ui';
+  const button=document.createElement('button');button.type='button';button.textContent='🔊 Ativar e testar som';
+  button.style.cssText='flex:1;min-height:40px;border:0;border-radius:8px;background:#15c9ef;color:#00131a;font:inherit';
+  const close=document.createElement('button');close.type='button';close.textContent='×';close.setAttribute('aria-label','Fechar aviso de som');
+  close.style.cssText='width:40px;height:40px;border:0;background:transparent;color:white;font-size:24px';
+  close.onclick=()=>{promptDismissed=true;box.remove();};
+  button.onclick=async()=>{
+   button.disabled=true;button.textContent='Ativando som…';
+   try{await window.ILBPSounds.test();}
+   catch{button.textContent='Som bloqueado. Toque para tentar novamente.';}
+   finally{button.disabled=false;}
+  };
+  box.append(button,close);document.body.appendChild(box);
  }
  async function unlock(){
   const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return false;
   if(!context||context.state==='closed')context=new Audio();
   const wasRunning=context.state==='running';
   if(context.state==='suspended'||context.state==='interrupted'){
-   resuming ||= context.resume().finally(()=>{resuming=null;});await resuming;
+   if(!resuming){
+    let timer;
+    resuming=Promise.race([context.resume(),new Promise(resolve=>{timer=setTimeout(()=>resolve(false),2500);})]).finally(()=>{clearTimeout(timer);resuming=null;});
+   }
+   try{await resuming;}catch{}
+   if(!context)return false;
+   if(context.state!=='running'){
+    const failed=context;context=null;
+    try{Promise.resolve(failed.close()).catch(()=>{});}catch{}
+    return false;
+   }
   }
-  if(context.state!=='running')return false;
+  if(!context||context.state!=='running')return false;
   document.getElementById('ilbp-unlock-sound')?.remove();
   if(!wasRunning){for(const kind of ['incoming','outgoing'])if(active[kind])pattern(kind);}
   if(pendingMessage&&Date.now()-pendingMessage<15000){pendingMessage=0;pattern('message');}
