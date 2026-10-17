@@ -3,7 +3,7 @@
   var SUPABASE_URL = "https://ngidsolvxegpyrprlbex.supabase.co";
   var KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
   var VAPID_PUBLIC_KEY = "BGq8IGyauun0vKpXPLksb5I_lrhxD89oxschTLQg8kGhKagxDyPOnXd7nTebG796JhAl_SP4KMa68P7Qz2IMp_c";
-  var db, user, channel, registration;
+  var db, user, channel, registration, generation = 0;
   var seen = new Set(), promptId = "il-push-permission-prompt";
   function logError(stage, error) { console.error("[IL Bate Papo Push] " + stage, error && (error.message || error)); }
   function client() {
@@ -21,9 +21,11 @@
     if (!registration) throw new Error("Service Worker indisponível");
     if (!user) throw new Error("Usuário não autenticado");
     if (Notification.permission !== "granted") throw new Error("Permissão não concedida");
+    var account = user.id, version = generation;
     var subscription = await registration.pushManager.getSubscription();
     if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey(VAPID_PUBLIC_KEY) });
-    var result = await client().from("push_subscriptions").upsert({ user_id: user.id, endpoint: subscription.endpoint, subscription: Object.assign(subscription.toJSON(), { app_id: "ilbp" }), updated_at: new Date().toISOString() }, { onConflict: "endpoint" }).select("id").single();
+    if (!user || user.id !== account || version !== generation) return;
+    var result = await client().from("push_subscriptions").upsert({ user_id: account, endpoint: subscription.endpoint, subscription: Object.assign(subscription.toJSON(), { app_id: "ilbp" }), updated_at: new Date().toISOString() }, { onConflict: "endpoint" }).select("id").single();
     if (result.error) throw result.error;
     console.info("[IL Bate Papo Push] dispositivo registrado", result.data && result.data.id);
   }
@@ -51,26 +53,39 @@
 
   async function onMessage(row) {
     if (!user || !row || row.sender_id === user.id || seen.has("m:" + row.id)) return;
+    var version = generation;
     seen.add("m:" + row.id);
     if(window.ILBPNativeAlerts?.notify(row.attachment_type==="audio"?"audio":"message","Nova mensagem no IL Bate Papo",row.body||({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type]||"Você recebeu uma mensagem.","message-"+row.id))return;
-    try { if(document.visibilityState==="visible")foregroundMessageAlert(row.id); var name = await senderName(row.sender_id); var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
+    try { if(document.visibilityState==="visible")foregroundMessageAlert(row.id); var name = await senderName(row.sender_id); if(version !== generation || !user)return; var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
   }
   async function onCall(row) {
     if (!user || !row || row.recipient_id !== user.id || row.signal_type !== "offer" || seen.has("c:" + row.call_id)) return;
+    if (Date.now() - Date.parse(row.created_at) > 90000) return;
+    var version = generation;
     seen.add("c:" + row.call_id);
     if(window.ILBPNativeAlerts?.notify(row.payload?.mode==="video"?"video-call":"call",row.payload?.mode==="video"?"Chamada de vídeo recebida":"Chamada de voz recebida","Alguém está ligando para você no IL Bate Papo.","call-"+row.call_id))return;
-    try { var name = await senderName(row.sender_id); var mode = row.payload && row.payload.mode === "video" ? "vídeo" : "voz"; await show("Chamada de " + mode + " recebida", name + " está ligando para você no IL Bate Papo.", true, "ilbp-call-" + row.call_id, row.created_at); } catch (error) { logError("chamada", error); }
+    try { var name = await senderName(row.sender_id); if(version !== generation || !user)return; var mode = row.payload && row.payload.mode === "video" ? "vídeo" : "voz"; await show("Chamada de " + mode + " recebida", name + " está ligando para você no IL Bate Papo.", true, "ilbp-call-" + row.call_id, row.created_at); } catch (error) { logError("chamada", error); }
   }
   function startRealtime() {
     if (!user || !client()) return;
     if (channel) client().removeChannel(channel);
+    var version = generation;
     channel = client().channel("il-notifications-" + user.id)
-      .on("postgres_changes", { event:"INSERT", schema:"public", table:"messages" }, function (event) { onMessage(event.new); })
-      .on("postgres_changes", { event:"INSERT", schema:"public", table:"call_signals", filter:"recipient_id=eq." + user.id }, function (event) { onCall(event.new); })
+      .on("postgres_changes", { event:"INSERT", schema:"public", table:"messages" }, function (event) { if(version === generation)onMessage(event.new); })
+      .on("postgres_changes", { event:"INSERT", schema:"public", table:"call_signals", filter:"recipient_id=eq." + user.id }, function (event) { if(version === generation)onCall(event.new); })
       .subscribe(function (status) { if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") logError("Realtime", status); });
   }
   async function configureForSession(nextUser) {
+    var previous = user;
+    var changed = (user && user.id) !== (nextUser && nextUser.id);
+    if (changed) { generation += 1; seen.clear(); if(channel){client().removeChannel(channel);channel=null;} }
     user = nextUser || null;
+    var version = generation;
+    if (changed && previous && registration) {
+      try { var oldSubscription = await registration.pushManager.getSubscription(); if (oldSubscription) await oldSubscription.unsubscribe(); }
+      catch(error) { logError("saída do push",error); }
+    }
+    if (version !== generation) return;
     if (!user) { removePrompt(); return; }
     startRealtime();
     if (!("Notification" in window) || !("PushManager" in window)) return;
@@ -79,7 +94,7 @@
   }
   async function start() {
     if (("serviceWorker" in navigator) && ("Notification" in window) && ("PushManager" in window)) {
-    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261010-3", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
+    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261017-1", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
     if (!registration.active) await new Promise((resolve,reject)=>{var timer=setTimeout(()=>reject(new Error("Ativação das notificações demorou. Reabra o site.")),12000);function check(){if(registration.active){clearTimeout(timer);resolve();}}var worker=registration.installing||registration.waiting;if(worker)worker.addEventListener("statechange",check);check();});
     }
     var c = client(); if (!c) throw new Error("Cliente Supabase não encontrado");
