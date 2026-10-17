@@ -44,10 +44,25 @@
     document.body.appendChild(box);
   }
   async function show(title, body, isCall, tag, createdAt) {
-    if (!("Notification" in window) || Notification.permission !== "granted" || !registration || document.visibilityState === "visible") return;
+    if (!("Notification" in window) || Notification.permission !== "granted" || !registration) return;
     await registration.showNotification(title, { body: body, timestamp: Date.parse(createdAt) || Date.now(), silent: false, icon: new URL("./icon.svg",document.baseURI).href, badge: new URL("./icon.svg",document.baseURI).href, tag: tag, renotify: true, requireInteraction: isCall, vibrate: isCall ? [700,300,700,300,900] : [250,120,250], data: { url: new URL("/",location.href).href, type: isCall ? "call" : "message" } });
   }
   async function senderName(id) { var result = await client().from("profiles").select("display_name").eq("id", id).maybeSingle(); return result.data && result.data.display_name || "Alguém"; }
+
+  function showInPage(title, body) {
+    if (document.visibilityState !== "visible") return;
+    document.getElementById("ilbp-incoming-alert")?.remove();
+    var box = document.createElement("div"); box.id = "ilbp-incoming-alert";
+    box.setAttribute("role", "alert");
+    box.style.cssText = "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:2147483001;width:calc(100% - 32px);max-width:440px;box-sizing:border-box;padding:16px;border-radius:16px;background:#0b2035;color:white;border:1px solid #19d7ff;box-shadow:0 12px 35px #0008;font:14px/1.5 system-ui";
+    var heading = document.createElement("strong"); heading.textContent = title;
+    var text = document.createElement("p"); text.textContent = body; text.style.margin = "6px 0";
+    var close = document.createElement("button"); close.type = "button"; close.textContent = "Fechar aviso";
+    close.style.cssText = "padding:7px 12px;border:0;border-radius:8px;background:#15c9ef;color:#00131a";
+    close.onclick = function () { box.remove(); };
+    box.append(heading, text, close); document.body.appendChild(box);
+    setTimeout(function () { box.remove(); }, 10000);
+  }
 
   function foregroundMessageAlert(id) { window.ILBPSounds?.message('message-'+id);if(navigator.vibrate)navigator.vibrate([180,90,180]); }
 
@@ -56,6 +71,7 @@
     var version = generation;
     seen.add("m:" + row.id);
     if(window.ILBPNativeAlerts?.notify(row.attachment_type==="audio"?"audio":"message","Nova mensagem no IL Bate Papo",row.body||({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type]||"Você recebeu uma mensagem.","message-"+row.id))return;
+    showInPage("Nova mensagem no IL Bate Papo", ({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type] || "Você recebeu uma mensagem.");
     try { if(document.visibilityState==="visible")foregroundMessageAlert(row.id); var name = await senderName(row.sender_id); if(version !== generation || !user)return; var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
   }
   async function onCall(row) {
@@ -64,6 +80,7 @@
     var version = generation;
     seen.add("c:" + row.call_id);
     if(window.ILBPNativeAlerts?.notify(row.payload?.mode==="video"?"video-call":"call",row.payload?.mode==="video"?"Chamada de vídeo recebida":"Chamada de voz recebida","Alguém está ligando para você no IL Bate Papo.","call-"+row.call_id))return;
+    showInPage(row.payload?.mode === "video" ? "Chamada de vídeo recebida" : "Chamada de voz recebida", "Alguém está ligando para você no IL Bate Papo.");
     try { var name = await senderName(row.sender_id); if(version !== generation || !user)return; var mode = row.payload && row.payload.mode === "video" ? "vídeo" : "voz"; await show("Chamada de " + mode + " recebida", name + " está ligando para você no IL Bate Papo.", true, "ilbp-call-" + row.call_id, row.created_at); } catch (error) { logError("chamada", error); }
   }
   function startRealtime() {
