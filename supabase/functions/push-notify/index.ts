@@ -5,6 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 const apps: Record<string, { id: string; name: string }> = {
   "https://il-chta.github.io": { id: "ilchats", name: "IL Chats" },
   "https://ilbate-papo.github.io": { id: "ilbp", name: "IL Bate Papo" },
+  "https://bate.papo.il-talk.com.br": { id: "ilbp", name: "IL Bate Papo" },
 };
 
 webpush.setVapidDetails(

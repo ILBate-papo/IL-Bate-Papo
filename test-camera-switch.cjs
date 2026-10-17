@@ -1,0 +1,14 @@
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
+const tick=()=>new Promise(r=>setImmediate(r));
+(async()=>{let installed,overlay,mode='normal',calls=[],stopped=0,released=false;
+const element=()=>({disabled:false,isConnected:true,style:{},dataset:{},remove(){this.isConnected=false},addEventListener(){},removeEventListener(){},appendChild(){},setAttribute(){}});
+const composer={isConnected:true},button={...element(),cloneNode(){return this},replaceWith(){},closest:()=>composer};
+const makeStream=facing=>({getTracks:()=>[{stop(){stopped++;released=true}}],getVideoTracks:()=>[{getSettings:()=>({facingMode:facing,deviceId:facing})}]});
+const document={hidden:false,body:{appendChild(){},},querySelector:()=>null,querySelectorAll:s=>s.includes('.composer')?[button]:[],createElement(){const e=element();const parts={};e.querySelector=s=>parts[s]||(parts[s]={...element(),play:async()=>{},srcObject:null});overlay=e;return e},addEventListener(){},removeEventListener(){}};
+const window={addEventListener(){},removeEventListener(){},async ILBPGetUserMedia(c){calls.push(c);if(calls.length>1)assert(released,'old tracks must stop before opening another lens');if(mode==='fail')throw Object.assign(Error('busy'),{name:'NotReadableError'});released=false;return makeStream(c.video.facingMode?.exact||'environment')}};
+vm.runInNewContext(fs.readFileSync(__dirname+'/camera-session.js','utf8'),{window,document,navigator:{mediaDevices:{getUserMedia(){},enumerateDevices:async()=>{if(mode==='enumerate-fail')throw Error('enumeration');return[{kind:'videoinput',deviceId:'rear',label:'back'},{kind:'videoinput',deviceId:'front',label:'front'}]}}},MutationObserver:class{observe(){}disconnect(){}},setTimeout:f=>{queueMicrotask(f)},URL,console,alert(){}});
+await button.onclick();await tick();assert.equal(calls[0].video.facingMode.exact,'environment');const flip=overlay.querySelector('[aria-label="Trocar câmera"]');flip.onclick();await tick();assert.equal(calls.at(-1).video.facingMode.exact,'user');assert(stopped);assert.equal(flip.disabled,false);
+mode='fail';flip.onclick();await tick();assert.equal(flip.disabled,false,'failure must leave a retry control');assert.match(overlay.querySelector('.chat-camera-status').textContent,/ocupada/);
+mode='enumerate-fail';flip.onclick();await tick();assert.equal(overlay.querySelector('.take-photo').disabled,false,'device enumeration failure cannot discard live preview');
+console.log('PASS: rear/front selection, release before switch, retry after busy camera and enumeration failure');
+})().catch(e=>{console.error(e);process.exitCode=1});

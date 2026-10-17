@@ -93,10 +93,13 @@
     else if (Notification.permission === "default") showPermissionPrompt();
   }
   async function start() {
+    try {
     if (("serviceWorker" in navigator) && ("Notification" in window) && ("PushManager" in window)) {
     registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261017-1", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
     if (!registration.active) await new Promise((resolve,reject)=>{var timer=setTimeout(()=>reject(new Error("Ativação das notificações demorou. Reabra o site.")),12000);function check(){if(registration.active){clearTimeout(timer);resolve();}}var worker=registration.installing||registration.waiting;if(worker)worker.addEventListener("statechange",check);check();});
     }
+    } catch(error) { logError("registro do dispositivo",error); }
+    // A service-worker failure must not disable foreground realtime alerts.
     var c = client(); if (!c) throw new Error("Cliente Supabase não encontrado");
     var session = await c.auth.getSession(); await configureForSession(session.data && session.data.session && session.data.session.user);
     c.auth.onAuthStateChange(function (_event, nextSession) { setTimeout(function () { configureForSession(nextSession && nextSession.user).catch(function (error) { logError("sessão", error); }); }, 0); });
@@ -124,9 +127,10 @@
       var permission=Notification.permission;if(permission==='default')permission=await Notification.requestPermission();
       if(permission!=='granted')throw new Error('Permita as notificações nas configurações deste site.');
       if(!registration||!user)await start();if(!user)throw new Error('Entre na sua conta para ativar os avisos.');
+      if(window.ILBPSounds)await window.ILBPSounds.unlock();
       await subscribeForPush();
       await registration.showNotification('IL Bate Papo: avisos ativados',{body:'Este é um teste dos avisos neste aparelho.',icon:new URL('./icon.svg',document.baseURI).href,tag:'alerts-test',silent:false,vibrate:[250,120,250]});
-      status.textContent='Avisos ativados neste aparelho. Agora faça o teste de chamada com o outro aparelho.';
+      status.textContent='Inscrição salva e aviso local exibido. Confirme a entrega enviando uma mensagem de outro aparelho com esta tela bloqueada.';
     }catch(error){status.textContent=error.message||'Não foi possível ativar. Tente novamente.';}finally{button.disabled=false;}};
     section.append(button,status);profile.appendChild(section);
   }
