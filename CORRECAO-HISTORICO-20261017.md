@@ -25,7 +25,7 @@ Sintaxe: bundle, history-sync.js, notifications.js e sw.js.
 
 O projeto Supabase usado pelo aplicativo é ngidsolvxegpyrprlbex. Ele não aparece na conexão Supabase disponível (que pertence a outro aplicativo e não foi alterado). Não foram executados INSERT/SELECT reais, inspeção de RLS, RPC direta, entrega VAPID/FCM ou teste entre duas contas em aparelhos reais. A persistência do servidor não está certificada. Os testes locais simulam banco e dispositivos.
 
-O site raiz é servido pelo repositório ILBate-papo/ilbate-papo.github.io, separado de IL-Bate-Papo. Publicar somente neste repositório não demonstra atualização de https://ilbate-papo.github.io/. Nenhuma publicação na raiz foi realizada neste conjunto.
+O site raiz é servido pelo repositório ILBate-papo/ilbate-papo.github.io, separado de IL-Bate-Papo. Publicar somente neste repositório não demonstra atualização de https://ilbate-papo.github.io/. A mesma correção foi aplicada preservando o HTML da raiz no commit d2302ce86632168b3e2aca782fa594fa3b82cb37; o workflow GitHub Pages foi iniciado.
 
 Push existente ainda depende do disparo do cliente. Falta provisionar/verificar entrega pelo servidor independentemente da página remetente, destino específico da conversa/chamada e chamada perdida persistida no servidor. O aviso de chamada perdida do SW é apenas uma notificação, não um registro no banco.
 
@@ -34,3 +34,5 @@ Não foram gerados APK, AAB ou instalador Windows: a validação funcional real,
 ## Próxima validação obrigatória
 
 Com acesso ao projeto correto: acompanhar upload, INSERT e ID; comparar conversation_id no reabrir; verificar RPC retorna sempre mesma conversa para o par. Depois testar duas contas Android/computador com texto, foto, vídeo, áudio, arquivo e chamada em primeiro plano, outra conversa, segundo plano, bloqueio, reabertura e reconexão. Confirmar no servidor e na tela, sem duplicatas. Não apagar dados nem relaxar RLS.
+
+Verificação adicional: test-history-send.cjs passou executando as funções reais do bundle para confirmação de texto, falha de INSERT, upload após troca de conversa e troca de conta. list_tables no projeto ngidsolvxegpyrprlbex retornou explicitamente: You do not have permission to perform this action.
