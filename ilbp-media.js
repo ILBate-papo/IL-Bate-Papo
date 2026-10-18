@@ -35,7 +35,7 @@
           video.classList.toggle('ilbp-video-ready', ready);
           if (video.classList.contains('remote-video')) video.closest('.call-screen')?.classList.toggle('ilbp-remote-ready', ready);
         };
-        ['loadedmetadata','loadeddata','playing','resize','emptied','ended'].forEach(event => video.addEventListener(event, update));
+        ['loadedmetadata','loadeddata','canplay','playing','resize','emptied','ended'].forEach(event => video.addEventListener(event, update));
         update();
       });
     }
