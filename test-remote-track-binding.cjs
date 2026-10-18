@@ -19,3 +19,5 @@ assert.equal(video.srcObject,videoStream);assert.deepEqual(video.srcObject.getTr
 v.dispatchEvent(new Event('ended'));assert.deepEqual(video.srcObject.getTracks(),[next],'old ended track must not remove replacement');
 next.readyState='ended';next.dispatchEvent(new Event('ended'));assert.equal(video.srcObject.getTracks().length,0);
 console.log('PASS: independent remote tracks, delayed unmute, duplicate track, replacement and ended-track cleanup.');
+
+const final=new Track('audio');window.ILBPAttachRemoteTrack(null,audio,final);const beforeRelease=played.length;window.ILBPReleaseMedia(audio);final.dispatchEvent(new Event('unmute'));assert.equal(played.length,beforeRelease);assert.equal(audio.srcObject,null);console.log('PASS: released call players ignore delayed track events.');

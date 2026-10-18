@@ -57,7 +57,7 @@ function harness(source,options={}) {
  console.log('PASS: online, subscription, visibility and listener cleanup');
  // Execute the actual integration fragment with React hook stand-ins, not a hand-written copy.
  const bundle=fs.readFileSync(__dirname+'/index-receber-video-20260906.js','utf8');
- const start=bundle.indexOf('let tt=async e=>'),end=bundle.indexOf('(0,S.useEffect)(()=>{if(!Fe)return;let e=A.channel(`incoming-calls-',start);
+ const start=bundle.indexOf('let tt=async e=>'),end=bundle.indexOf('(0,S.useEffect)(()=>{if(!Fe)return;',start);
  assert(start>0&&end>start);const r1=deferred(),r2=deferred();let rpc=0,selected='',contact,display=[];
  const state={request:0,account:'me',controller:null};
  const context={historyRef:{current:state},A:{auth:{getUser:async()=>({data:{user:{id:'me'}}})},rpc:()=> (++rpc===1?r1.promise:r2.promise)},w:x=>contact=x,D:()=>{},Te:x=>display=x,Pe:x=>selected=x,Ie:()=>{},M:()=>{},S:{useEffect:()=>{}},a:true,je:'',Fe:'me',window:{ILBPHistory:require('./history-sync.js')}};

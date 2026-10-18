@@ -115,6 +115,14 @@
   };
   // Bind each kind independently: receiving audio must not reload the video.
   const remoteBindings = new WeakMap();
+  window.ILBPReleaseMedia = function (element) {
+    if (!element) return;
+    retryButtons.get(element)?.remove();retryButtons.delete(element);
+    const binding=remoteBindings.get(element);
+    binding?.dispose?.();remoteBindings.delete(element);
+    if (typeof element.pause === 'function') element.pause();
+    element.srcObject=null;
+  };
   window.ILBPAttachRemoteTrack = function (video, audio, track) {
     if (!track || !['audio','video'].includes(track.kind)) return;
     const element = track.kind === 'video' ? video : audio;
@@ -125,6 +133,7 @@
       remoteBindings.set(element,binding);
     }
     if (binding.track === track) return;
+    binding.dispose?.();
     binding.stream.getTracks().forEach(previous => binding.stream.removeTrack(previous));
     binding.stream.addTrack(track);binding.track=track;
     if (track.kind === 'video') { element.muted=true;element.playsInline=true; }
@@ -134,7 +143,7 @@
       window.ILBPPlayMedia(element);
     };
     track.addEventListener('unmute',play);
-    track.addEventListener('ended',() => {
+    const ended = () => {
       track.removeEventListener('unmute',play);
       if (binding.track !== track) return;
       binding.stream.removeTrack(track);binding.track=null;
@@ -142,8 +151,20 @@
         element.classList.remove('ilbp-video-ready');
         element.closest('.call-screen')?.classList.remove('ilbp-remote-ready');
       }
-    },{once:true});
+    };
+    track.addEventListener('ended',ended,{once:true});
+    binding.dispose=()=>{track.removeEventListener('unmute',play);track.removeEventListener('ended',ended);};
     play();
   };
+  if (typeof document !== 'undefined') {
+    const resume=()=>{
+      if(document.hidden)return;
+      document.querySelectorAll('.call-screen audio,.call-screen video').forEach(element=>{
+        if(element.srcObject?.getTracks().some(track=>track.readyState==='live'))window.ILBPPlayMedia(element);
+      });
+    };
+    document.addEventListener('visibilitychange',resume);
+    window.addEventListener?.('pageshow',resume);
+  }
 })();
 

@@ -3,6 +3,11 @@ self.addEventListener("install", function () { self.skipWaiting(); });
 self.addEventListener("activate", function (event) { event.waitUntil(self.clients.claim()); });
 self.addEventListener("message", function (event) {
   if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data?.type === "ILBP_CLOSE_CALL" && event.data.callId) {
+    event.waitUntil(self.registration.getNotifications().then(notices=>{
+      for(const notice of notices)if(notice.data?.call_id===event.data.callId || notice.tag==="ilbp-call-"+event.data.callId || notice.tag==="call-"+event.data.callId)notice.close();
+    }));
+  }
 });
 
 var ILBP_HOME = new URL("./",self.registration.scope).href;
@@ -32,20 +37,25 @@ self.addEventListener("push", function (event) {
   var title = String(data.title || label + " no IL Bate Papo").slice(0,100);
   var eventId = String(data.call_id || data.message_id || "").replace(/[^a-zA-Z0-9_-]/g,"").slice(0,100);
   // A push must produce an OS notification even when a frozen client reports visible.
-  event.waitUntil(self.registration.showNotification(title, {
+  event.waitUntil((async function () {
+  var tag=String(isCall ? "ilbp-call-" + (eventId || String(timestamp)) : data.tag || "ilbp-message-" + (eventId || String(timestamp))).slice(0,150);
+  var existing=self.registration.getNotifications ? await self.registration.getNotifications({tag:tag}) : [];
+  if(isCall && existing.length && !expiredCall)return;
+  await self.registration.showNotification(title, {
     body: body,
     icon: new URL("icon.svg",self.registration.scope).href,
     badge: new URL("icon.svg",self.registration.scope).href,
-    tag: String(data.tag || (isCall ? "ilbp-call-" : "ilbp-message-") + (eventId || String(timestamp))).slice(0,150),
+    tag: tag,
     renotify: true,
     requireInteraction: isCall && !expiredCall,
     silent: expiredCall,
     timestamp: timestamp,
     vibrate: expiredCall ? undefined : isCall ? [700,300,700,300,900] : [250,120,250],
-    data: { url: ILBP_HOME, type: isCall ? "call" : "message", received_at: timestamp },
+    data: { url: ILBP_HOME, type: isCall ? "call" : "message", call_id: data.call_id, received_at: timestamp },
     actions: isCall ? [{action:"open",title:"Abrir chamada"},{action:"dismiss",title:"Fechar aviso"}] :
       [{action:"open",title:"Abrir"}]
-  }));
+  });
+  })());
 });
 
 self.addEventListener("notificationclick", function (event) {

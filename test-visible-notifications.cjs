@@ -3,7 +3,7 @@ const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/st
 let load,pendingCall=false,removed=0;const handlers={},shown=[],banners=[],sounds=[];
 const node=()=>({style:{},setAttribute(){},append(){},remove(){},addEventListener(){}});
 const registration={active:true,async update(){},pushManager:{async getSubscription(){return{endpoint:'test',toJSON:()=>({})}}},async showNotification(title,options){shown.push({title,options})}};
-const channel={on(type,filter,fn){handlers[filter.table]=fn;return this},subscribe(){return this}};
+const channel={on(type,filter,fn){if(filter.table!=='call_signals'||filter.filter?.startsWith('recipient_id'))handlers[filter.table]=fn;return this},subscribe(){return this}};
 const db={
  auth:{async getSession(){return{data:{session:{user:{id:'me'}}}}},onAuthStateChange(){}},
  channel:()=>channel,removeChannel(){},
