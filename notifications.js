@@ -50,7 +50,7 @@
   async function senderName(id) { var result = await client().from("profiles").select("display_name").eq("id", id).maybeSingle(); return result.data && result.data.display_name || "Alguém"; }
 
   function showInPage(title, body) {
-    if (document.visibilityState !== "visible") return;
+    if (document.visibilityState !== "visible" || document.querySelector('.incoming-call')) return;
     document.getElementById("ilbp-incoming-alert")?.remove();
     var box = document.createElement("div"); box.id = "ilbp-incoming-alert";
     box.setAttribute("role", "alert");
@@ -80,7 +80,9 @@
     var version = generation;
     seen.add("c:" + row.call_id);
     if(window.ILBPNativeAlerts?.notify(row.payload?.mode==="video"?"video-call":"call",row.payload?.mode==="video"?"Chamada de vídeo recebida":"Chamada de voz recebida","Alguém está ligando para você no IL Bate Papo.","call-"+row.call_id))return;
-    showInPage(row.payload?.mode === "video" ? "Chamada de vídeo recebida" : "Chamada de voz recebida", "Alguém está ligando para você no IL Bate Papo.");
+    // The call dialog already supplies the caller and answer/decline controls.
+    // A foreground toast at the same desktop position hides those controls.
+    document.getElementById("ilbp-incoming-alert")?.remove();
     try { var name = await senderName(row.sender_id); if(version !== generation || !user)return; var mode = row.payload && row.payload.mode === "video" ? "vídeo" : "voz"; await show("Chamada de " + mode + " recebida", name + " está ligando para você no IL Bate Papo.", true, "ilbp-call-" + row.call_id, row.created_at); } catch (error) { logError("chamada", error); }
   }
   function startRealtime() {
