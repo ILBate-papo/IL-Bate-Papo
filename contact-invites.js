@@ -22,36 +22,67 @@
       .trim().replace(/^@/, "");
   }
 
+  var sharedHandled = "", subscribed = false;
+  function finishSharedInvite() {
+    try { localStorage.removeItem("ilbp-pending-contact"); } catch (_) {}
+    var url = new window.URL(location.href);
+    url.searchParams.delete("contato");
+    history.replaceState(null, "", url.pathname + url.search + url.hash);
+    document.querySelectorAll(".ilbp-invite-guide").forEach(function (node) { node.remove(); });
+  }
+  function showInviteGuide() {
+    var username = sharedUsername(), card = document.querySelector(".auth-card");
+    if (!username || !card || card.querySelector(".ilbp-invite-guide")) return;
+    var guide = document.createElement("section");guide.className = "ilbp-invite-guide";
+    var title = document.createElement("strong");title.textContent = "Você recebeu um convite de @" + username;
+    var help = document.createElement("p");help.textContent = "Crie sua conta ou entre. Seu convite ficará guardado para você adicionar o contato depois.";
+    var cancel = document.createElement("button");cancel.type = "button";cancel.textContent = "Dispensar convite";
+    cancel.onclick = finishSharedInvite;guide.append(title, help, cancel);card.prepend(guide);
+  }
+  function confirmSharedContact(profile) {
+    return new Promise(function (resolve) {
+      var dialog = document.createElement("dialog");dialog.className = "ilbp-share-dialog";
+      var title = document.createElement("h2");title.id = "ilbp-received-title";title.textContent = "Adicionar " + (profile.display_name || profile.username) + "?";
+      dialog.setAttribute("aria-labelledby", title.id);
+      var help = document.createElement("p");help.textContent = "@" + profile.username + " compartilhou este convite. Adicione o contato para conversar e fazer chamadas.";
+      var yes = document.createElement("button"), no = document.createElement("button");yes.type = no.type = "button";yes.textContent = "Adicionar contato";no.textContent = "Agora não";
+      function done(value) { dialog.remove();resolve(value); }
+      yes.onclick = function () { done(true); };no.onclick = function () { done(false); };
+      dialog.addEventListener("cancel", function (event) { event.preventDefault();done(false); });
+      dialog.append(title, help, yes, no);document.body.appendChild(dialog);dialog.showModal();
+    });
+  }
   async function addSharedContact() {
     var username = sharedUsername();
     if (!username || sharedBusy) return;
     sharedBusy = true;
     try {
-      var c = client();
-      if (!c) return;
-      var auth = await c.auth.getUser();
-      var user = auth.data && auth.data.user;
-      if (!user) return;
-
-      var profile = await c.from("profiles")
-        .select("id,display_name,username")
-        .ilike("username", username)
-        .maybeSingle();
-      if (profile.error || !profile.data || profile.data.id === user.id) return;
-
-      if (!confirm("Adicionar " + (profile.data.display_name || profile.data.username) + " aos seus contatos do IL Bate Papo?")) return;
-      var result = await c.rpc("accept_contact_link", { p_username: profile.data.username });
-      if (result.error) {
-        alert("Não foi possível adicionar este contato agora: " + result.error.message);
-        return;
+      var c = client();if (!c) return;
+      var auth = await c.auth.getUser(), user = auth.data && auth.data.user;
+      if (auth.error || !user || sharedHandled === user.id + ":" + username) return;
+      var profile = await c.from("profiles").select("id,display_name,username")
+        .ilike("username", username.replace(/[%_\\]/g, "\\$&")).maybeSingle();
+      if (profile.error) return;
+      if (!profile.data) { sharedHandled = user.id + ":" + username;alert("Este contato não foi encontrado. Confira o convite com quem enviou.");return; }
+      if (profile.data.id === user.id) { finishSharedInvite();return; }
+      var relation = await c.from("friendships").select("status,requester_id,addressee_id")
+        .or("and(requester_id.eq." + user.id + ",addressee_id.eq." + profile.data.id + "),and(requester_id.eq." + profile.data.id + ",addressee_id.eq." + user.id + ")");
+      if (relation.error) return;
+      if ((relation.data || []).some(function (row) { return row.status === "blocked"; })) {
+        sharedHandled = user.id + ":" + username;alert("Este contato está bloqueado.");return;
       }
-      localStorage.removeItem("ilbp-pending-contact");
-      history.replaceState(null, "", location.pathname + location.hash);
-      clear();
-      location.reload();
-    } finally {
-      sharedBusy = false;
-    }
+      if ((relation.data || []).some(function (row) { return row.status === "accepted"; })) { finishSharedInvite();return; }
+      sharedHandled = user.id + ":" + username;
+      if (!await confirmSharedContact(profile.data)) return;
+      // Recheck the session after the user decides; never apply an invite to a different account.
+      var current = await c.auth.getUser();
+      if (current.error || current.data?.user?.id !== user.id) throw new Error("Entre novamente na sua conta.");
+      var result = await c.rpc("accept_contact_link", { p_username: profile.data.username });
+      if (result.error || !result.data) throw new Error(result.error?.message || "Não foi possível adicionar o contato.");
+      finishSharedInvite();clear();location.reload();
+    } catch (error) {
+      sharedHandled = "";alert("Não foi possível adicionar este contato agora. Tente novamente em Encontrar amigos.");
+    } finally { sharedBusy = false; }
   }
 
   async function accept(invite, button) {
@@ -108,6 +139,13 @@
     try {
       var c = client();
       if (!c) return;
+      if (!subscribed && c.auth.onAuthStateChange) {
+        subscribed = true;
+        c.auth.onAuthStateChange(function (event) {
+          if (event === "SIGNED_IN" || event === "INITIAL_SESSION") setTimeout(addSharedContact, 0);
+          if (event === "SIGNED_OUT") { sharedHandled = "";clear(); }
+        });
+      }
       var auth = await c.auth.getUser();
       var user = auth.data && auth.data.user;
       if (!user) { userId = ""; clear(); return; }
@@ -133,10 +171,13 @@
     if (event.target.closest('.mobile-nav button,.rail button')) setTimeout(function () { check(false); }, 150);
   });
 
+  new MutationObserver(showInviteGuide).observe(document.documentElement, { childList: true, subtree: true });
+  showInviteGuide();
   window.addEventListener("load", function () {
+    showInviteGuide();
     setTimeout(addSharedContact, 1200);
     setTimeout(check, 1800);
-    setInterval(check, 12000);
+    setInterval(function () { check(false);addSharedContact();showInviteGuide(); }, 12000);
   });
 })();
 
