@@ -4,6 +4,7 @@
   var KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
   var VAPID_PUBLIC_KEY = "BGq8IGyauun0vKpXPLksb5I_lrhxD89oxschTLQg8kGhKagxDyPOnXd7nTebG796JhAl_SP4KMa68P7Qz2IMp_c";
   var db, user, channel, registration, generation = 0;
+  var closedCalls=new Set();
   var seen = new Set(), promptId = "il-push-permission-prompt";
   function logError(stage, error) { console.error("[IL Bate Papo Push] " + stage, error && (error.message || error)); }
   function client() {
@@ -45,12 +46,13 @@
   }
   async function show(title, body, isCall, tag, createdAt) {
     if (!("Notification" in window) || Notification.permission !== "granted" || !registration) return;
+    if(isCall && registration.getNotifications && (await registration.getNotifications({tag:tag})).length)return;
     await registration.showNotification(title, { body: body, timestamp: Date.parse(createdAt) || Date.now(), silent: false, icon: new URL("./icon.svg",document.baseURI).href, badge: new URL("./icon.svg",document.baseURI).href, tag: tag, renotify: true, requireInteraction: isCall, vibrate: isCall ? [700,300,700,300,900] : [250,120,250], data: { url: new URL("/",location.href).href, type: isCall ? "call" : "message" } });
   }
   async function senderName(id) { var result = await client().from("profiles").select("display_name").eq("id", id).maybeSingle(); return result.data && result.data.display_name || "Alguém"; }
 
   function showInPage(title, body) {
-    if (document.visibilityState !== "visible") return;
+    if (document.visibilityState !== "visible" || document.querySelector('.incoming-call')) return;
     document.getElementById("ilbp-incoming-alert")?.remove();
     var box = document.createElement("div"); box.id = "ilbp-incoming-alert";
     box.setAttribute("role", "alert");
@@ -68,6 +70,8 @@
 
   async function onMessage(row) {
     if (!user || !row || row.sender_id === user.id || seen.has("m:" + row.id)) return;
+    // Call history is shown in the conversation; the offer has its own alert.
+    if(/^[🎥📞]\s*Chamada de (vídeo|voz) (iniciada|encerrada|não atendida)/u.test(row.body||""))return;
     var version = generation;
     seen.add("m:" + row.id);
     if(window.ILBPNativeAlerts?.notify(row.attachment_type==="audio"?"audio":"message","Nova mensagem no IL Bate Papo",row.body||({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type]||"Você recebeu uma mensagem.","message-"+row.id))return;
@@ -75,13 +79,22 @@
     try { if(document.visibilityState==="visible")foregroundMessageAlert(row.id); var name = await senderName(row.sender_id); if(version !== generation || !user)return; var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
   }
   async function onCall(row) {
+    if(user && row && [row.sender_id,row.recipient_id].includes(user.id) && ["answer","hangup"].includes(row.signal_type)){
+      closedCalls.add(row.call_id);
+      seen.add("c:"+row.call_id);
+      navigator.serviceWorker?.controller?.postMessage({type:"ILBP_CLOSE_CALL",callId:row.call_id});
+      if(registration?.getNotifications)for(const notice of await registration.getNotifications())if(notice.tag==="ilbp-call-"+row.call_id||notice.tag==="call-"+row.call_id)notice.close();
+      return;
+    }
     if (!user || !row || row.recipient_id !== user.id || row.signal_type !== "offer" || seen.has("c:" + row.call_id)) return;
     if (Date.now() - Date.parse(row.created_at) > 90000) return;
     var version = generation;
     seen.add("c:" + row.call_id);
     if(window.ILBPNativeAlerts?.notify(row.payload?.mode==="video"?"video-call":"call",row.payload?.mode==="video"?"Chamada de vídeo recebida":"Chamada de voz recebida","Alguém está ligando para você no IL Bate Papo.","call-"+row.call_id))return;
-    showInPage(row.payload?.mode === "video" ? "Chamada de vídeo recebida" : "Chamada de voz recebida", "Alguém está ligando para você no IL Bate Papo.");
-    try { var name = await senderName(row.sender_id); if(version !== generation || !user)return; var mode = row.payload && row.payload.mode === "video" ? "vídeo" : "voz"; await show("Chamada de " + mode + " recebida", name + " está ligando para você no IL Bate Papo.", true, "ilbp-call-" + row.call_id, row.created_at); } catch (error) { logError("chamada", error); }
+    // The call dialog already supplies the caller and answer/decline controls.
+    // A foreground toast at the same desktop position hides those controls.
+    document.getElementById("ilbp-incoming-alert")?.remove();
+    try { var name = await senderName(row.sender_id); if(version !== generation || !user || closedCalls.has(row.call_id))return; var mode = row.payload && row.payload.mode === "video" ? "vídeo" : "voz"; await show("Chamada de " + mode + " recebida", name + " está ligando para você no IL Bate Papo.", true, "ilbp-call-" + row.call_id, row.created_at); } catch (error) { logError("chamada", error); }
   }
   function startRealtime() {
     if (!user || !client()) return;
@@ -90,12 +103,13 @@
     channel = client().channel("il-notifications-" + user.id)
       .on("postgres_changes", { event:"INSERT", schema:"public", table:"messages" }, function (event) { if(version === generation)onMessage(event.new); })
       .on("postgres_changes", { event:"INSERT", schema:"public", table:"call_signals", filter:"recipient_id=eq." + user.id }, function (event) { if(version === generation)onCall(event.new); })
+      .on("postgres_changes", { event:"INSERT", schema:"public", table:"call_signals", filter:"sender_id=eq." + user.id }, function (event) { if(version === generation && event.new.signal_type!=="offer")onCall(event.new); })
       .subscribe(function (status) { if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") logError("Realtime", status); });
   }
   async function configureForSession(nextUser) {
     var previous = user;
     var changed = (user && user.id) !== (nextUser && nextUser.id);
-    if (changed) { generation += 1; seen.clear(); if(channel){client().removeChannel(channel);channel=null;} }
+    if (changed) { generation += 1; seen.clear();closedCalls.clear(); if(channel){client().removeChannel(channel);channel=null;} }
     user = nextUser || null;
     var version = generation;
     if (changed && previous && registration) {
@@ -112,7 +126,7 @@
   async function start() {
     try {
     if (("serviceWorker" in navigator) && ("Notification" in window) && ("PushManager" in window)) {
-    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261017-1", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
+    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261018-call-session-2", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
     if (!registration.active) await new Promise((resolve,reject)=>{var timer=setTimeout(()=>reject(new Error("Ativação das notificações demorou. Reabra o site.")),12000);function check(){if(registration.active){clearTimeout(timer);resolve();}}var worker=registration.installing||registration.waiting;if(worker)worker.addEventListener("statechange",check);check();});
     }
     } catch(error) { logError("registro do dispositivo",error); }
