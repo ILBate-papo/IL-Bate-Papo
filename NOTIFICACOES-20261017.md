@@ -1,4 +1,28 @@
-# Notificações — diagnóstico de 17/10/2026
+# Notificações — diagnóstico e implantação de 17/10/2026
+
+## Correção publicada no Supabase
+
+A função `push-notify` versão 6 foi publicada em `ngidsolvxegpyrprlbex`.
+Ela aceita `https://bate.papo.il-talk.com.br`, mantém os endereços anteriores,
+inclui o tipo de anexo no aviso e usa o módulo FCM preparado neste repositório.
+JWT obrigatório, verificação do remetente e filtro por aplicativo foram mantidos.
+Nenhuma alteração foi feita no projeto da Mioko.
+
+Verificação HTTP após a publicação: preflight do domínio novo e dos dois
+endereços GitHub retorna 200 e a origem correspondente. Origem desconhecida
+continua retornando 403. POST sem autenticação retorna 401.
+
+Passaram os testes locais do servidor (incluindo o domínio novo), FCM,
+Service Worker, avisos visíveis, inicialização sem Service Worker e controle
+de som. São testes simulados e de HTTP; não comprovam som físico nem entrega.
+
+No banco, há inscrições Web Push identificadas como IL Bate Papo, mas nenhuma
+inscrição com transporte FCM. A credencial privada FCM não foi conferida nem
+alterada. O recebimento no APK e a entrega com tela apagada continuam pendentes
+de validação em aparelhos. Testar com duas contas distintas: eventos enviados
+pela própria conta são filtrados pelo cliente.
+
+## Diagnóstico anterior (antes da publicação)
 
 Verificação HTTP do endpoint push-notify no projeto ngidsolvxegpyrprlbex:
 OPTIONS com Origin https://bate.papo.il-talk.com.br retornou 403,
