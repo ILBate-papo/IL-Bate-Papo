@@ -1,0 +1,11 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const listeners={},videoClasses=new Set(),callClasses=new Set();
+const toggle=set=>(name,on)=>on?set.add(name):set.delete(name);
+const video={dataset:{},readyState:2,videoWidth:0,classList:{toggle:toggle(videoClasses),contains:n=>n==='remote-video'},closest:()=>({classList:{toggle:toggle(callClasses)}}),addEventListener:(name,fn)=>listeners[name]=fn};
+const document={documentElement:{},querySelectorAll:()=>[video],addEventListener(){}};
+vm.runInNewContext(fs.readFileSync(__dirname+'/ilbp-media.js','utf8'),{window:{},document,MutationObserver:class{observe(){}},navigator:{},Map,WeakMap,Promise,Set,URL,console,setTimeout});
+assert(!videoClasses.has('ilbp-video-ready'));
+video.videoWidth=640;assert(listeners.resize,'remote dimensions may change after the initial playing event');listeners.resize();
+assert(videoClasses.has('ilbp-video-ready'));assert(callClasses.has('ilbp-remote-ready'));
+video.readyState=0;listeners.emptied();assert(!videoClasses.has('ilbp-video-ready'));assert(!callClasses.has('ilbp-remote-ready'));
+console.log('PASS: late video dimensions reveal the remote image; empty streams restore the placeholder');
