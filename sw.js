@@ -55,7 +55,8 @@ self.addEventListener("notificationclick", function (event) {
   event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (windows) {
     for (var i = 0; i < windows.length; i += 1) {
       if (isILBPWindow(windows[i])) {
-        return windows[i].navigate(target).then(function (client) { return client && client.focus(); });
+        // Reloading here destroys the pending call and its peer connection.
+        return windows[i].focus();
       }
     }
     return self.clients.openWindow(target);
