@@ -35,7 +35,7 @@
           video.classList.toggle('ilbp-video-ready', ready);
           if (video.classList.contains('remote-video')) video.closest('.call-screen')?.classList.toggle('ilbp-remote-ready', ready);
         };
-        ['loadeddata','playing','emptied','ended'].forEach(event => video.addEventListener(event, update));
+        ['loadedmetadata','loadeddata','playing','resize','emptied','ended'].forEach(event => video.addEventListener(event, update));
         update();
       });
     }
@@ -112,6 +112,38 @@
       button.onclick=async()=>{try{await element.play();button.remove();retryButtons.delete(element);}catch{button.textContent='🔊 Toque para tentar o som novamente';}};
       retryButtons.set(element,button);host.appendChild(button);
     }
+  };
+  // Bind each kind independently: receiving audio must not reload the video.
+  const remoteBindings = new WeakMap();
+  window.ILBPAttachRemoteTrack = function (video, audio, track) {
+    if (!track || !['audio','video'].includes(track.kind)) return;
+    const element = track.kind === 'video' ? video : audio;
+    if (!element) return;
+    let binding = remoteBindings.get(element);
+    if (!binding) {
+      binding = {stream:new MediaStream(), track:null};
+      remoteBindings.set(element,binding);
+    }
+    if (binding.track === track) return;
+    binding.stream.getTracks().forEach(previous => binding.stream.removeTrack(previous));
+    binding.stream.addTrack(track);binding.track=track;
+    if (track.kind === 'video') { element.muted=true;element.playsInline=true; }
+    if (element.srcObject !== binding.stream) element.srcObject=binding.stream;
+    const play = () => {
+      if (binding.track !== track || track.readyState === 'ended' || element.isConnected === false) return;
+      window.ILBPPlayMedia(element);
+    };
+    track.addEventListener('unmute',play);
+    track.addEventListener('ended',() => {
+      track.removeEventListener('unmute',play);
+      if (binding.track !== track) return;
+      binding.stream.removeTrack(track);binding.track=null;
+      if (track.kind === 'video') {
+        element.classList.remove('ilbp-video-ready');
+        element.closest('.call-screen')?.classList.remove('ilbp-remote-ready');
+      }
+    },{once:true});
+    play();
   };
 })();
 

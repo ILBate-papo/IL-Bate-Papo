@@ -112,7 +112,7 @@
   async function start() {
     try {
     if (("serviceWorker" in navigator) && ("Notification" in window) && ("PushManager" in window)) {
-    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261017-1", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
+    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261018-focus-call-1", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
     if (!registration.active) await new Promise((resolve,reject)=>{var timer=setTimeout(()=>reject(new Error("Ativação das notificações demorou. Reabra o site.")),12000);function check(){if(registration.active){clearTimeout(timer);resolve();}}var worker=registration.installing||registration.waiting;if(worker)worker.addEventListener("statechange",check);check();});
     }
     } catch(error) { logError("registro do dispositivo",error); }
