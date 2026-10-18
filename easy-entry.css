@@ -8,3 +8,19 @@
 .empty-conversation .il-invite-whatsapp{display:block;margin:18px auto 4px}
 .il-invite-help{display:block;margin-top:9px;color:#93a6bb;font-size:11px}
 @media(max-width:680px){.il-easy-start{padding:14px}.il-easy-start strong{font-size:16px}}
+.ilbp-share-dialog,.ilbp-contact-search{box-sizing:border-box;width:min(440px,calc(100vw - 24px));max-height:88dvh;overflow:auto;padding:24px;border:1px solid #23516b;border-radius:22px;background:#0b1726;color:#eff7ff;font:15px/1.5 system-ui,sans-serif;box-shadow:0 24px 80px #0008}
+.ilbp-share-dialog::backdrop,.ilbp-contact-search::backdrop{background:#020811c9}
+.ilbp-share-dialog h2{font-size:24px;line-height:1.2;margin:12px 0}
+.ilbp-share-dialog p,.ilbp-contact-search p{color:#b9c8da}
+.ilbp-share-dialog small{color:#46dfd1;letter-spacing:1px;font-size:11px}
+.ilbp-share-dialog button,.ilbp-share-dialog a,.ilbp-contact-search button{box-sizing:border-box;display:block;width:100%;min-height:48px;margin:10px 0;padding:12px 16px;border:1px solid #31516c;border-radius:12px;background:#142c42;color:#eff7ff;font:600 15px system-ui;text-align:center;text-decoration:none;cursor:pointer}
+.ilbp-share-dialog a.ilbp-share-primary{background:#25d366;border-color:#25d366;color:#042113}
+.ilbp-share-dialog input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #31516c;border-radius:10px;background:#07111e;color:#c3d8ec;font-size:13px}
+.ilbp-share-dialog .ilbp-share-close{background:transparent}
+.ilbp-share-dialog :focus-visible,.ilbp-contact-search :focus-visible{outline:3px solid #48e5ee;outline-offset:3px}
+.ilbp-contact-search input{border-radius:10px;border:1px solid #31516c;background:#07111e;color:white;font-size:16px}
+.ilbp-contact-search button:disabled{opacity:.6;cursor:default}
+.ilbp-contact-search .ilbp-person{padding:12px 0;border-bottom:1px solid #294255}
+.ilbp-invite-guide{border:1px solid #36d5b2;border-radius:14px;padding:14px;margin:12px 0;background:#0a302c;color:#e6fff9}
+.ilbp-invite-guide p{margin:5px 0;font-size:13px}
+.empty-conversation .il-invite-whatsapp+.il-invite-whatsapp{background:#14364b;color:#eff7ff;box-shadow:none;margin-top:10px}
