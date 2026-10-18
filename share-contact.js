@@ -1,31 +1,30 @@
 (function(){
  'use strict';
  let active=null;
- function fallback(data){
-  if(active)active.close();
-  const previous=document.activeElement,dialog=document.createElement('dialog');
-  dialog.style.cssText='width:min(420px,90vw);max-height:85dvh;overflow:auto;border:0;border-radius:16px;padding:20px;box-sizing:border-box';
-  const title=document.createElement('h2');title.textContent='Compartilhar meu contato';
-  const field=document.createElement('textarea');field.readOnly=true;field.value=data.url;field.setAttribute('aria-label','Link do seu contato');field.style.cssText='width:100%;box-sizing:border-box;min-height:72px';
-  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Escolha como enviar o convite.';
-  const whatsapp=document.createElement('a');whatsapp.textContent='Enviar pelo WhatsApp';whatsapp.href='https://wa.me/?text='+encodeURIComponent(data.text);whatsapp.style.cssText='display:block;margin:16px 0';
-  const copy=document.createElement('button');copy.type='button';copy.textContent='Copiar link';
-  const close=document.createElement('button');close.type='button';close.textContent='Fechar';close.style.marginLeft='12px';
-  function dismiss(){dialog.remove();if(active?.node===dialog)active=null;if(previous?.isConnected)previous.focus();}
-  copy.onclick=async()=>{
-   try{if(!navigator.clipboard?.writeText)throw Error('Clipboard indisponível');await navigator.clipboard.writeText(data.url);status.textContent='Link copiado! Cole na mensagem para seu amigo.';}
-   catch(e){field.focus();field.select();try{if(!document.execCommand('copy'))throw Error('Cópia indisponível');status.textContent='Link copiado! Cole na mensagem para seu amigo.';}catch(error){status.textContent='O link está selecionado. Toque e segure para copiar.';}}
-  };
-  close.onclick=dismiss;dialog.addEventListener('cancel',e=>{e.preventDefault();dismiss();});
-  dialog.append(title,field,status,whatsapp,copy,close);document.body.appendChild(dialog);active={node:dialog,close:dismiss};dialog.showModal();
- }
+ const HOME='https://bate.papo.il-talk.com.br/instalar.html';
+ window.ILBPContactURL=function(username){const url=new URL(HOME);url.searchParams.set('contato',String(username).trim().replace(/^@/,''));return url.href;};
+ function node(tag,text){const e=document.createElement(tag);if(text)e.textContent=text;return e;}
  window.ILBPShareContact=async function(data){
-  const url=new URL(data.url);
-  if(url.origin!=='https://ilbate-papo.github.io'||!url.searchParams.get('contato'))throw Error('Link de contato inválido');
-  const safe={title:String(data.title||'Meu contato no IL Bate Papo'),text:String(data.text||data.url),url:url.href};
-  if(typeof navigator.share==='function'){
-   try{await navigator.share(safe);return;}catch(error){if(error.name==='AbortError')return;}
-  }
-  fallback(safe);
+  const original=new URL(data.url);
+  if(!['https://ilbate-papo.github.io','https://bate.papo.il-talk.com.br'].includes(original.origin)||!original.searchParams.get('contato'))throw Error('Link de contato inválido');
+  const url=window.ILBPContactURL(original.searchParams.get('contato'));
+  const safe={title:'Meu convite no IL Bate Papo',url,text:'Olá! Adicione @'+original.searchParams.get('contato')+' no IL Bate Papo. Abra o convite, instale ou continue pelo navegador, crie sua conta e toque em Adicionar contato.'};
+  if(active)active();
+  const previous=document.activeElement,dialog=node('dialog');dialog.className='ilbp-share-dialog';
+  const title=node('h2','Convide quem faz parte da sua vida'),intro=node('p','Seu amigo abre o convite, instala ou continua pelo navegador e adiciona você. Depois é só conversar.'),field=node('input');
+  title.id='ilbp-share-title';dialog.setAttribute('aria-labelledby',title.id);
+  field.readOnly=true;field.value=url;field.setAttribute('aria-label','Seu link de convite');
+  const status=node('p','Escolha como enviar seu convite.');status.setAttribute('role','status');
+  const whatsapp=node('a','💬 Enviar pelo WhatsApp');whatsapp.className='ilbp-share-primary';whatsapp.href='https://wa.me/?text='+encodeURIComponent(safe.text+'\n'+url);whatsapp.target='_blank';whatsapp.rel='noopener noreferrer';
+  const copy=node('button','🔗 Copiar convite'),other=node('button','↗ Mais opções'),close=node('button','Fechar');
+  for(const b of [copy,other,close])b.type='button';close.className='ilbp-share-close';
+  function dismiss(){dialog.remove();if(active===dismiss)active=null;if(previous?.isConnected)previous.focus();}
+  copy.onclick=async()=>{
+   try{await navigator.clipboard.writeText(safe.text+'\n'+url);status.textContent='Convite copiado! Cole na conversa com seu amigo.';}
+   catch(error){field.focus();field.select();try{if(!document.execCommand('copy'))throw Error();status.textContent='Link copiado! Cole na conversa com seu amigo.';}catch(e){status.textContent='Toque e segure no link selecionado para copiar.';}}
+  };
+  other.onclick=async()=>{if(!navigator.share){if(/ILBatePapo\//.test(navigator.userAgent)){location.href='ilbp-share://contact?text='+encodeURIComponent(safe.text+'\n'+url);return;}status.textContent='Use Copiar convite e cole no aplicativo que preferir.';return;}try{await navigator.share(safe);}catch(error){if(error.name!=='AbortError')status.textContent='Use o WhatsApp ou copie o convite.';}};
+  close.onclick=dismiss;dialog.addEventListener('cancel',event=>{event.preventDefault();dismiss();});
+  dialog.append(node('small','IL BATE PAPO · AMIGOS'),title,intro,whatsapp,copy,other,field,status,close);document.body.append(dialog);active=dismiss;dialog.showModal();
  };
 })();
