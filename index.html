@@ -1,6 +1,18 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
+  <script>
+  // Route recovery before analytics or application clients can consume the link.
+  (function () {
+    var p = new URLSearchParams(location.hash.slice(1));
+    if (p.get('type') === 'recovery' || p.has('error_code')) {
+      var target = new URL('password-recovery.html', location.href);
+      target.search = '';
+      target.hash = location.hash;
+      location.replace(target.href);
+    }
+  })();
+  </script>
   <base href="/IL-Bate-Papo/">
 
  <!-- Google tag (gtag.js) -->
@@ -108,7 +120,7 @@
   </script>
   <script src="./history-sync.js?v=20261017-1"></script>
   <script src="./incoming-calls.js?v=20261018-call-session-2"></script>
-  <script type="module" crossorigin src="./index-receber-video-20260906.js?v=20261020-new-database-1"></script>
+  <script type="module" crossorigin src="./index-receber-video-20260906.js?v=20261020-recovery-2"></script>
   
   <link rel="stylesheet" crossorigin href="./index-CtQnR9aj.css?v=20260909-3">
   <link rel="stylesheet" href="./status-circular.css?v=5">
