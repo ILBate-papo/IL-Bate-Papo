@@ -1,7 +1,7 @@
 (function () {
   "use strict";
-  var URL = "https://ngidsolvxegpyrprlbex.supabase.co";
-  var KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
+  var URL = "https://cipfycetzelxzwpfaqiu.supabase.co";
+  var KEY = "sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
   var db, userId = "", busy = false, sharedBusy = false, accepting = false;
 
   function client() {
