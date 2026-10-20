@@ -28,8 +28,8 @@ public class MainActivity extends Activity {
  private PermissionRequest pending;
  private ValueCallback<Uri[]> files;
  private String pendingSession;
- private static final String SUPABASE="https://ngidsolvxegpyrprlbex.supabase.co";
- private static final String PUBLIC_KEY="sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
+ private static final String SUPABASE="https://cipfycetzelxzwpfaqiu.supabase.co";
+ private static final String PUBLIC_KEY="sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
  private static final String CALLBACK="br.com.ilbatepapo.app://auth-callback";
  private static final String HOST="bate.papo.il-talk.com.br";
  private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&(HOST.equals(uri.getHost())||"ilbate-papo.github.io".equals(uri.getHost()))&&(uri.getPath().isEmpty()||uri.getPath().equals("/")||uri.getPath().equals("/index.html")||uri.getPath().startsWith("/IL-Bate-Papo/"));}
@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
   }});
   web.postWebMessage(new WebMessage("ilbp-native-notifications",new WebMessagePort[]{ports[1]}),Uri.parse("https://"+Uri.parse(web.getUrl()).getHost()));
  }
- private boolean isGoogleStart(Uri uri){return "https".equals(uri.getScheme())&&"ngidsolvxegpyrprlbex.supabase.co".equals(uri.getHost())&&"/auth/v1/authorize".equals(uri.getPath())&&"google".equals(uri.getQueryParameter("provider"));}
+ private boolean isGoogleStart(Uri uri){return "https".equals(uri.getScheme())&&"cipfycetzelxzwpfaqiu.supabase.co".equals(uri.getHost())&&"/auth/v1/authorize".equals(uri.getPath())&&"google".equals(uri.getQueryParameter("provider"));}
  private SharedPreferences authFlow(){return getSharedPreferences("google_login_pending",MODE_PRIVATE);}
  private void loginError(String message){if(!isFinishing())new AlertDialog.Builder(this).setTitle("Entrar com Google").setMessage(message).setPositiveButton("OK",null).show();}
  private void beginGoogleLogin(){
