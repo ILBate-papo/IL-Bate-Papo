@@ -33,7 +33,7 @@
 
   async function callInfo(signal, headers) {
     if (signal.signal_type !== "hangup") return { answered: null, mode: "" };
-    var url = "https://ngidsolvxegpyrprlbex.supabase.co/rest/v1/call_signals" +
+    var url = "https://cipfycetzelxzwpfaqiu.supabase.co/rest/v1/call_signals" +
       "?select=signal_type,payload&call_id=eq." + encodeURIComponent(signal.call_id) +
       "&signal_type=in.(offer,answer)";
     var response = await originalFetch(url, {
@@ -57,7 +57,7 @@
     var apikey = headers.get("apikey");
     if (!authorization || !apikey) return;
 
-    await originalFetch("https://ngidsolvxegpyrprlbex.supabase.co/rest/v1/messages", {
+    await originalFetch("https://cipfycetzelxzwpfaqiu.supabase.co/rest/v1/messages", {
       method: "POST",
       headers: {
         "Authorization": authorization,
