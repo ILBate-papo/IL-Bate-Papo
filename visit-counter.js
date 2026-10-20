@@ -1,13 +1,9 @@
 (function () {
   "use strict";
 
-  var GEO_ENDPOINTS = [
-    "https://ipwho.is/?fields=success,country_code,country,region,city",
-    "https://ipapi.co/json/"
-  ];
   var VISIT_MARKER = "ilbp-visit-recorded-v1";
-  var SUPABASE_URL = "https://ngidsolvxegpyrprlbex.supabase.co";
-  var SUPABASE_KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
+  var SUPABASE_URL = "https://cipfycetzelxzwpfaqiu.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
 
   function getClient() {
     if (window.__ilbpToolsClient) return window.__ilbpToolsClient;
@@ -27,30 +23,12 @@
   function flag(code) {
     var countryCode = String(code || "").trim().toLowerCase();
     if (!/^[a-z]{2}$/.test(countryCode)) return '<span aria-hidden="true">🌐</span>';
-    return '<img src="https://flagcdn.com/32x24/' + countryCode + '.png" ' +
-      'width="32" height="24" alt="Bandeira ' + countryCode.toUpperCase() + '" loading="lazy">';
+    return '<span aria-hidden="true">🌐</span>';
   }
 
   async function locateVisit() {
-    var lastError;
-    for (var i = 0; i < GEO_ENDPOINTS.length; i += 1) {
-      try {
-        var response = await fetch(GEO_ENDPOINTS[i], { cache: "no-store" });
-        if (!response.ok) throw new Error("Localização indisponível");
-        var data = await response.json();
-        var code = data.country_code || data.countryCode;
-        if (data.success === false || !code) throw new Error("Localização incompleta");
-        return {
-          country_code: code,
-          country: data.country_name || data.country,
-          region: data.region || data.region_name,
-          city: data.city
-        };
-      } catch (error) {
-        lastError = error;
-      }
-    }
-    throw lastError || new Error("Localização indisponível");
+    // No third-party IP lookup: record aggregate visits without location.
+    return {};
   }
 
   async function sendVisit(geo) {
