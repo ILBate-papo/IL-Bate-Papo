@@ -28,6 +28,8 @@ public class MainActivity extends Activity {
  private PermissionRequest pending;
  private ValueCallback<Uri[]> files;
  private String pendingSession;
+ private GeolocationPermissions.Callback locationCallback;
+ private String locationOrigin;
  private static final String SUPABASE="https://cipfycetzelxzwpfaqiu.supabase.co";
  private static final String PUBLIC_KEY="sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
  private static final String CALLBACK="br.com.ilbatepapo.app://auth-callback";
@@ -48,6 +50,14 @@ public class MainActivity extends Activity {
     if(!trusted(Uri.parse(url))){result.cancel();return true;}
     new AlertDialog.Builder(MainActivity.this).setMessage(message).setPositiveButton("Sim",(dialog,which)->result.confirm()).setNegativeButton("Não",(dialog,which)->result.cancel()).setOnCancelListener(dialog->result.cancel()).show();return true;
    }
+   @Override public void onGeolocationPermissionsShowPrompt(String origin,GeolocationPermissions.Callback callback){
+    Uri requested=Uri.parse(origin);
+    if(!trusted(requested)||web.getUrl()==null||!requested.getHost().equals(Uri.parse(web.getUrl()).getHost())||locationCallback!=null){callback.invoke(origin,false,false);return;}
+    locationCallback=callback;locationOrigin=origin;
+    if(checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED)resolveLocation();
+    else requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},45);
+   }
+   @Override public void onGeolocationPermissionsHidePrompt(){finishLocation(false);}
    @Override public void onPermissionRequest(PermissionRequest request){runOnUiThread(()->{
     if(!trusted(request.getOrigin())||pending!=null){request.deny();return;}
     pending=request;ArrayList<String> missing=new ArrayList<>();
@@ -138,12 +148,20 @@ public class MainActivity extends Activity {
   web.evaluateJavascript(script,null);
  }
 
+ private void finishLocation(boolean allowed){
+  GeolocationPermissions.Callback callback=locationCallback;String origin=locationOrigin;locationCallback=null;locationOrigin=null;
+  if(callback!=null)callback.invoke(origin,allowed,false);
+ }
+ private void resolveLocation(){
+  boolean allowed=locationOrigin!=null&&web.getUrl()!=null&&trusted(Uri.parse(web.getUrl()))&&Uri.parse(locationOrigin).getHost().equals(Uri.parse(web.getUrl()).getHost())&&(checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED);
+  finishLocation(allowed);
+ }
  private void resolvePermission(){if(pending==null)return;ArrayList<String> grant=new ArrayList<>();for(String r:pending.getResources()){if(r.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)&&checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED)grant.add(r);if(r.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)&&checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)grant.add(r);}if(grant.isEmpty())pending.deny();else pending.grant(grant.toArray(new String[0]));pending=null;}
- @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==42)resolvePermission();if(request==44){if(notificationTestPending&&NativeNotifications.permitted(this))NativeNotifications.show(this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");notificationTestPending=false;sendNotificationState();}}
+ @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==42)resolvePermission();if(request==45)resolveLocation();if(request==44){if(notificationTestPending&&NativeNotifications.permitted(this))NativeNotifications.show(this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");notificationTestPending=false;sendNotificationState();}}
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==43&&files!=null){ArrayList<Uri> uris=new ArrayList<>();if(result==RESULT_OK&&data!=null){if(data.getClipData()!=null)for(int i=0;i<data.getClipData().getItemCount();i++)uris.add(data.getClipData().getItemAt(i).getUri());else if(data.getData()!=null)uris.add(data.getData());}files.onReceiveValue(uris.isEmpty()?null:uris.toArray(new Uri[0]));files=null;}}
  @Override protected void onSaveInstanceState(Bundle state){super.onSaveInstanceState(state);web.saveState(state);}
  @Override public void onBackPressed(){if(web.canGoBack())web.goBack();else super.onBackPressed();}
  @Override protected void onPause(){if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('ilbp-pause'))",null);super.onPause();}
- @Override protected void onDestroy(){if(notificationPort!=null)try{notificationPort.close();}catch(Exception ignored){}if(pending!=null)pending.deny();if(files!=null)files.onReceiveValue(null);web.destroy();super.onDestroy();}
+ @Override protected void onDestroy(){finishLocation(false);if(notificationPort!=null)try{notificationPort.close();}catch(Exception ignored){}if(pending!=null)pending.deny();if(files!=null)files.onReceiveValue(null);web.destroy();super.onDestroy();}
 }
 
