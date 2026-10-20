@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var SUPABASE_URL = "https://ngidsolvxegpyrprlbex.supabase.co";
-  var SUPABASE_KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
+  var SUPABASE_URL = "https://cipfycetzelxzwpfaqiu.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
   var client = null;
   var userId = "";
   var conversationMap = {};
