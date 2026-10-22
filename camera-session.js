@@ -34,7 +34,7 @@
     if(selected)candidates.push({deviceId:{exact:selected.deviceId}});
     candidates.push({facingMode:{ideal:facing}},true);
     for(let attempt=0;attempt<candidates.length;attempt++){
-     try{opened=await window.ILBPGetUserMedia({video:candidates[attempt],audio:false});break;}
+     try{opened=await window.ILBPGetUserMedia({video:candidates[attempt]===true?{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30}}:{...candidates[attempt],width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24,max:30}},audio:false});break;}
      catch(error){if(!['OverconstrainedError','NotFoundError','NotReadableError','AbortError'].includes(error.name)||attempt===candidates.length-1)throw error;}
      if(token!==generation||!overlay.isConnected)return;
     }
@@ -56,7 +56,7 @@
    for(const [text,action] of [['↻ Refazer',()=>{close();open(composer);}],['Enviar',()=>{const input=composer.querySelector('input.attachment-file');if(!input||!composer.isConnected){alert('Abra a conversa novamente para enviar.');return;}try{const dt=new DataTransfer();dt.items.add(file);input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));close();}catch(e){alert('Não foi possível anexar. Tente selecionar o arquivo pelo botão de anexos.');}}],['Cancelar',close]]){const button=document.createElement('button');button.type='button';button.textContent=text;button.onclick=action;controls.appendChild(button);}
   }
   flip.onclick=()=>{if(opening||pending||recorder?.state==='recording')return;front=!front;start();};
-  photo.onclick=()=>{if(pending||recorder?.state==='recording')return;if(!video.videoWidth){message('Aguarde a imagem da câmera.');return;}const token=generation;const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);canvas.toBlob(blob=>{if(blob&&token===generation&&overlay.isConnected)preview(new File([blob],'foto-'+Date.now()+'.jpg',{type:'image/jpeg'}));},'image/jpeg',.9);};
+  photo.onclick=()=>{if(pending||recorder?.state==='recording')return;if(!video.videoWidth){message('Aguarde a imagem da câmera.');return;}const token=generation;const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);canvas.toBlob(blob=>{if(blob&&token===generation&&overlay.isConnected)preview(new File([blob],'foto-'+Date.now()+'.jpg',{type:'image/jpeg'}));},'image/jpeg',.78);};
   record.onclick=async()=>{
    if(recorder?.state==='recording'){record.disabled=true;recorder.stop();return;}
    if(pending||!stream)return;if(!stream.getVideoTracks().some(t=>t.readyState==='live')){message('A câmera parou. Toque em Refazer para abrir novamente.');return;}if(!window.MediaRecorder){message('Este navegador não permite gravar vídeo.');return;}
@@ -74,7 +74,7 @@
     }
     message('Preparando gravação…');
     const mime=['video/webm;codecs=vp8,opus','video/webm','video/mp4'].find(t=>MediaRecorder.isTypeSupported(t));
-    recorder=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);const active=recorder,chunks=[];
+    recorder=mime?new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:900000,audioBitsPerSecond:64000}):new MediaRecorder(stream,{videoBitsPerSecond:900000,audioBitsPerSecond:64000});const active=recorder,chunks=[];
     active.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
     active.onerror=event=>{stop();record.textContent='● Gravar vídeo';message('A gravação falhou: '+(event.error?.message||event.error?.name||'Abra a câmera novamente para tentar.'));};
     active.onstop=()=>{if(token!==generation||!overlay.isConnected)return;const type=active.mimeType||mime||'video/webm';const blob=new Blob(chunks,{type});if(!blob.size){stop();message('O vídeo ficou vazio. Abra a câmera novamente.');return;}preview(new File([blob],'video-'+Date.now()+(type.includes('mp4')?'.mp4':'.webm'),{type}));};

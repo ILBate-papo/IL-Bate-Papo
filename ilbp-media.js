@@ -1,5 +1,58 @@
 (function () {
   'use strict';
+  // Shrink media before network upload; never replace it with a larger result.
+  window.ILBPPrepareAttachment = async function(file) {
+    if (!file || file.size < 256*1024) return file;
+    if (/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      const url=URL.createObjectURL(file), image=new Image();
+      try {
+        await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=reject;image.src=url;});
+        const scale=Math.min(1,1600/Math.max(image.naturalWidth,image.naturalHeight));
+        const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.naturalWidth*scale));canvas.height=Math.max(1,Math.round(image.naturalHeight*scale));
+        const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);
+        const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.78));
+        return blob && blob.size<file.size ? new File([blob],file.name.replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg',lastModified:file.lastModified}) : file;
+      } catch { return file; } finally { URL.revokeObjectURL(url); }
+    }
+    if (!file.type.startsWith('video/') || file.size<2*1024*1024 || !window.MediaRecorder) return file;
+    const video=document.createElement('video');
+    if (!video.captureStream || !HTMLCanvasElement.prototype.captureStream) return file;
+    const mime=['video/webm;codecs=vp8,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t));
+    if(!mime)return file;
+    const url=URL.createObjectURL(file);let source,output,recorder,frame,timer,visibility;
+    video.preload='auto';video.playsInline=true;video.muted=true;
+    try {
+      await new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(Error('Video timeout')),10000);video.onloadeddata=resolve;video.onerror=reject;video.src=url;});clearTimeout(timer);
+      // Re-encoding runs locally in real time. Preserve originals on unsupported/long videos.
+      if(!Number.isFinite(video.duration)||video.duration>180)return file;
+      source=video.captureStream();await video.play();
+      const audio=source.getAudioTracks();video.pause();video.currentTime=0;
+      // Some mobile browsers cannot capture soundtrack; never send a silent replacement.
+      if(!audio.length)return file;
+      const scale=Math.min(1,1280/Math.max(video.videoWidth,video.videoHeight));
+      const canvas=document.createElement('canvas');canvas.width=Math.max(2,Math.round(video.videoWidth*scale/2)*2);canvas.height=Math.max(2,Math.round(video.videoHeight*scale/2)*2);
+      const ctx=canvas.getContext('2d');const draw=()=>{ctx.drawImage(video,0,0,canvas.width,canvas.height);frame=requestAnimationFrame(draw);};draw();
+      output=canvas.captureStream(24);audio.forEach(track=>output.addTrack(track));
+      recorder=new MediaRecorder(output,{mimeType:mime,videoBitsPerSecond:900000,audioBitsPerSecond:64000});
+      const chunks=[];
+      const blob=await new Promise((resolve,reject)=>{
+        recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onerror=reject;
+        recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));
+        video.onended=()=>{if(recorder.state!=='inactive')recorder.stop();};
+        video.onerror=reject;
+        visibility=()=>{if(document.hidden)reject(Error('Video interrupted'));};document.addEventListener('visibilitychange',visibility);
+        timer=setTimeout(()=>reject(Error('Video timeout')),(video.duration+15)*1000);
+        recorder.start(1000);video.play().catch(reject);
+      });
+      return blob.size && blob.size<file.size ? new File([blob],file.name.replace(/\.[^.]+$/,'')+'.webm',{type:mime,lastModified:file.lastModified}) : file;
+    } catch { return file; }
+    finally {
+      clearTimeout(timer);cancelAnimationFrame(frame);if(visibility)document.removeEventListener('visibilitychange',visibility);
+      if(recorder && recorder.state!=='inactive'){recorder.onstop=null;recorder.stop();}
+      video.pause();source?.getTracks().forEach(t=>t.stop());output?.getTracks().forEach(t=>t.stop());video.removeAttribute('src');video.load();URL.revokeObjectURL(url);
+    }
+  };
+
   let captureQueue = Promise.resolve();
   window.ILBPGetUserMedia = function (constraints) {
     const capture = async () => {
