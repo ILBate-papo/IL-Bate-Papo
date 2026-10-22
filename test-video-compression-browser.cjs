@@ -16,6 +16,8 @@ const fs=require('fs'),os=require('os'),path=require('path'),assert=require('ass
   fs.writeFileSync(output,Buffer.from(result.data));
   const info=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',output]));
   assert(info.streams.some(s=>s.codec_type==='audio'),'compressed video must preserve soundtrack');assert(info.streams.some(s=>s.codec_type==='video'));
+  const loudness=require('child_process').spawnSync('ffmpeg',['-hide_banner','-i',output,'-af','volumedetect','-f','null','-'],{encoding:'utf8'}).stderr;
+  const level=/mean_volume: ([\d.-]+) dB/.exec(loudness);assert(level && Number(level[1])>-60,'soundtrack must contain audible audio');
   const length=Number(info.format.duration);assert(length>=1.7 && length<=2.6,'full clip preserved');
   console.log('PASS: browser re-encodes video smaller with audio and full clip duration');
  }finally{await browser?.close();fs.rmSync(dir,{recursive:true,force:true});}
