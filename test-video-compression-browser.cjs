@@ -16,9 +16,12 @@ const fs=require('fs'),os=require('os'),path=require('path'),assert=require('ass
   fs.writeFileSync(output,Buffer.from(result.data));
   const info=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',output]));
   assert(info.streams.some(s=>s.codec_type==='audio'),'compressed video must preserve soundtrack');assert(info.streams.some(s=>s.codec_type==='video'));
-  const loudness=require('child_process').spawnSync('ffmpeg',['-hide_banner','-i',output,'-af','volumedetect','-f','null','-'],{encoding:'utf8'}).stderr;
+  const decoded=require('child_process').spawnSync('ffmpeg',['-hide_banner','-i',output,'-af','volumedetect','-progress','pipe:1','-f','null','-'],{encoding:'utf8'});
+  assert.equal(decoded.status,0,'compressed media must decode');const loudness=decoded.stderr;
   const level=/mean_volume: ([\d.-]+) dB/.exec(loudness);assert(level && Number(level[1])>-60,'soundtrack must contain audible audio');
-  const length=Number(info.format.duration);assert(length>=1.7 && length<=2.6,'full clip preserved');
+  // MediaRecorder emits streaming WebM without a container duration header.
+  const times=Array.from(decoded.stdout.matchAll(/out_time_us=(\d+)/g),m=>Number(m[1])/1e6);const length=Math.max(...times);
+  assert(length>=1.7 && length<=2.6,'full decoded clip preserved: '+length+' seconds');
   console.log('PASS: browser re-encodes video smaller with audio and full clip duration');
  }finally{await browser?.close();fs.rmSync(dir,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exit(1)});
