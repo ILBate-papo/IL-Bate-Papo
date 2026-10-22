@@ -1,8 +1,8 @@
 (function () {
   "use strict";
-  var SUPABASE_URL = "https://ngidsolvxegpyrprlbex.supabase.co";
-  var KEY = "sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz";
-  var VAPID_PUBLIC_KEY = "BGq8IGyauun0vKpXPLksb5I_lrhxD89oxschTLQg8kGhKagxDyPOnXd7nTebG796JhAl_SP4KMa68P7Qz2IMp_c";
+  var SUPABASE_URL = "https://cipfycetzelxzwpfaqiu.supabase.co";
+  var KEY = "sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
+  var VAPID_PUBLIC_KEY = "BAYT6OJVdRifegmFQezbIupUllasi1b8vIRaOm3sdKJpgJ9QOGHEoFeVFwYMEmO6NLLwj37urGDDW4uVSlhqhX8";
   var db, user, channel, registration, generation = 0;
   var closedCalls=new Set();
   var seen = new Set(), promptId = "il-push-permission-prompt";
@@ -18,13 +18,29 @@
     var raw = atob((value + padding).replace(/-/g, "+").replace(/_/g, "/"));
     return Uint8Array.from(raw, function (character) { return character.charCodeAt(0); });
   }
-  async function subscribeForPush() {
+  var pushRegistrationQueue = Promise.resolve();
+  function subscribeForPush() {
+    var pending = pushRegistrationQueue.catch(function () {}).then(registerForPush);
+    pushRegistrationQueue = pending;
+    return pending;
+  }
+  async function registerForPush() {
     if (!registration) throw new Error("Service Worker indisponível");
     if (!user) throw new Error("Usuário não autenticado");
     if (Notification.permission !== "granted") throw new Error("Permissão não concedida");
     var account = user.id, version = generation;
     var subscription = await registration.pushManager.getSubscription();
-    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey(VAPID_PUBLIC_KEY) });
+    var desiredKey = applicationServerKey(VAPID_PUBLIC_KEY);
+    var existingKey = subscription && subscription.options && subscription.options.applicationServerKey;
+    if (existingKey) {
+      var bytes = new Uint8Array(existingKey);
+      if (bytes.length !== desiredKey.length || bytes.some(function (value, index) { return value !== desiredKey[index]; })) {
+        await subscription.unsubscribe();
+        subscription = null;
+      }
+    }
+    if (!user || user.id !== account || version !== generation) return;
+    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: desiredKey });
     if (!user || user.id !== account || version !== generation) return;
     var result = await client().from("push_subscriptions").upsert({ user_id: account, endpoint: subscription.endpoint, subscription: Object.assign(subscription.toJSON(), { app_id: "ilbp" }), updated_at: new Date().toISOString() }, { onConflict: "endpoint" }).select("id").single();
     if (result.error) throw result.error;
@@ -126,7 +142,7 @@
   async function start() {
     try {
     if (("serviceWorker" in navigator) && ("Notification" in window) && ("PushManager" in window)) {
-    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261018-call-session-2", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
+    registration = await navigator.serviceWorker.register(new URL("./sw.js?v=20261022-new-project-1", document.baseURI).href, { updateViaCache:"none" }); await registration.update();
     if (!registration.active) await new Promise((resolve,reject)=>{var timer=setTimeout(()=>reject(new Error("Ativação das notificações demorou. Reabra o site.")),12000);function check(){if(registration.active){clearTimeout(timer);resolve();}}var worker=registration.installing||registration.waiting;if(worker)worker.addEventListener("statechange",check);check();});
     }
     } catch(error) { logError("registro do dispositivo",error); }

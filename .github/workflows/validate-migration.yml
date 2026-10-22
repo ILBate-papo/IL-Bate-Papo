@@ -1,0 +1,48 @@
+name: Validate Bate Papo migration
+on:
+  push:
+    branches: [migration/supabase-new-20261020]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  existing-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Install isolated test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ilbp-tests" --no-audit --no-fund --ignore-scripts playwright@1.62.1 jsdom@26.1.0
+          node "$RUNNER_TEMP/ilbp-tests/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Prepare synthetic audio fixture
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+          ffmpeg -hide_banner -loglevel error -f lavfi -i sine=frequency=440:duration=1 -c:a libopus /tmp/ilbp-voice-validation.webm
+      - name: Run all existing tests
+        env:
+          NODE_PATH: ${{ runner.temp }}/ilbp-tests/node_modules
+          ILBP_JSDOM_PATH: ${{ runner.temp }}/ilbp-tests/node_modules/jsdom
+        shell: bash
+        run: |
+          failed=0
+          printf '## Existing migration tests\n\nBrowser/media tests use synthetic devices or mocked APIs. No physical Android, remote FCM delivery, or long-idle call test is performed.\n\n' >> "$GITHUB_STEP_SUMMARY"
+          for test_file in test-*.cjs; do
+            printf '\nRunning %s\n' "$test_file"
+            if timeout 90s node "$test_file"; then
+              printf -- '- PASS: %s\n' "$test_file" >> "$GITHUB_STEP_SUMMARY"
+            else
+              printf -- '- FAIL: %s\n' "$test_file" >> "$GITHUB_STEP_SUMMARY"
+              failed=1
+            fi
+          done
+          exit "$failed"

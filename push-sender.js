@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   var originalFetch = window.fetch.bind(window);
-  var functionUrl = "https://ngidsolvxegpyrprlbex.supabase.co/functions/v1/push-notify";
+  var functionUrl = "https://cipfycetzelxzwpfaqiu.supabase.co/functions/v1/push-notify";
 
   function sendPush(payload, headers) {
     var authorization = headers.get("authorization");

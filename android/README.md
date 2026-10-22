@@ -9,7 +9,7 @@ confere aplicativo, destinatário e validade antes de exibir o aviso.
 O WebView usa o domínio confiável na comunicação nativa.
 
 O recebimento remoto depende da publicação do código web corrigido e da Edge
-Function `push-notify` no Supabase `ngidsolvxegpyrprlbex`, com o segredo privado
+Function `push-notify` no Supabase `cipfycetzelxzwpfaqiu`, com o segredo privado
 `ILBP_FCM_SERVICE_ACCOUNT` correspondente ao projeto Firebase.
 `google-services.json` não substitui essa credencial de servidor.
 Não publicar esse segredo no repositório nem no aplicativo.
