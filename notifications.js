@@ -2,7 +2,7 @@
   "use strict";
   var SUPABASE_URL = "https://cipfycetzelxzwpfaqiu.supabase.co";
   var KEY = "sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
-  var VAPID_PUBLIC_KEY = "BGq8IGyauun0vKpXPLksb5I_lrhxD89oxschTLQg8kGhKagxDyPOnXd7nTebG796JhAl_SP4KMa68P7Qz2IMp_c";
+  var VAPID_PUBLIC_KEY = "BAYT6OJVdRifegmFQezbIupUllasi1b8vIRaOm3sdKJpgJ9QOGHEoFeVFwYMEmO6NLLwj37urGDDW4uVSlhqhX8";
   var db, user, channel, registration, generation = 0;
   var closedCalls=new Set();
   var seen = new Set(), promptId = "il-push-permission-prompt";
