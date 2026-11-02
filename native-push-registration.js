@@ -5,7 +5,7 @@
  async function sync(){
   const db=client(),api=window.ILBPNativeAlerts;
   if(!db?.auth||!api?.available)return;
-  if(!bound){bound=true;db.auth.onAuthStateChange(()=>{revision++;api.account('');setTimeout(schedule,0);});}
+  if(!bound){bound=true;db.auth.onAuthStateChange((_event,session)=>{revision++;if(!session?.user)api.account('');setTimeout(schedule,0);});}
   const version=revision;
   const {data,error}=await db.auth.getSession();
   if(error)throw error;

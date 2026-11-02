@@ -90,8 +90,11 @@
     if(/^[🎥📞]\s*Chamada de (vídeo|voz) (iniciada|encerrada|não atendida)/u.test(row.body||""))return;
     var version = generation;
     seen.add("m:" + row.id);
-    if(window.ILBPNativeAlerts?.notify(row.attachment_type==="audio"?"audio":"message","Nova mensagem no IL Bate Papo",row.body||({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type]||"Você recebeu uma mensagem.","message-"+row.id))return;
-    showInPage("Nova mensagem no IL Bate Papo", ({audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."})[row.attachment_type] || "Você recebeu uma mensagem.");
+    var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."};
+    var text = labels[row.attachment_type] || row.body || "Você recebeu uma mensagem.";
+    // The Android notification does not replace the banner inside the open app.
+    showInPage("Nova mensagem no IL Bate Papo", String(text).slice(0,140));
+    if(window.ILBPNativeAlerts?.notify(row.attachment_type==="audio"?"audio":"message","Nova mensagem no IL Bate Papo",String(text),"message-"+row.id))return;
     try { if(document.visibilityState==="visible")foregroundMessageAlert(row.id); var name = await senderName(row.sender_id); if(version !== generation || !user)return; var labels={audio:"Você recebeu uma mensagem de áudio.",video:"Você recebeu um vídeo.",image:"Você recebeu uma foto.",file:"Você recebeu um arquivo."}; var text = row.content || row.body || row.text || labels[row.attachment_type] || "Você recebeu uma nova mensagem."; await show("Mensagem de " + name, String(text).slice(0,140), false, "ilbp-message-" + row.id, row.created_at); } catch (error) { logError("mensagem", error); }
   }
   async function onCall(row) {

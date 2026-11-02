@@ -3,6 +3,11 @@
   'use strict';
   if (window.__ilbpDatabaseBridge) return;
   window.__ilbpDatabaseBridge = true;
+  // This file is fetched from the site even by APK 1.0.6. The APK's bundled
+  // notifications.js cannot receive a site-only update.
+  const messageRecovery=document.createElement('script');
+  messageRecovery.src=new URL('./message-alert-recovery.js?v=20261102-1',document.baseURI).href;
+  document.head.appendChild(messageRecovery);
   const oldOrigin = 'https://ngidsolvxegpyrprlbex.supabase.co';
   const newOrigin = 'https://cipfycetzelxzwpfaqiu.supabase.co';
   const oldKey = 'sb_publishable_-8u67PtkHJj1yRVWtOIkog_2skdsDcz';

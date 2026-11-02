@@ -1,0 +1,31 @@
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
+(async()=>{
+ const notices=[],banners=[],sounds=[],queries=[],events={};let poll,sessionChange,rows=[],fail=false;
+ const node=()=>({style:{},setAttribute(){},append(){},remove(){}});
+ const document={visibilityState:'visible',body:{appendChild:n=>banners.push(n)},getElementById:()=>null,querySelector:()=>null,createElement:node,addEventListener:(n,f)=>events[n]=f};
+ const db={auth:{getSession:async()=>({data:{session:{user:{id:'me'}}}}),onAuthStateChange:f=>sessionChange=f},from(){
+  const query={select(){return this},neq(){return this},order(){return this},limit(){return this},gt(key,value){queries.push({gt:value});return this},or(value){queries.push({or:value});return this},then(resolve){resolve(fail?{error:new Error('offline')}:{data:rows});}};return query;
+ }};
+ const nativeAccounts=[];
+ const api={account:id=>nativeAccounts.push(id),notify(...args){notices.push(args);return true;}};
+ const window={__ilbpAppClient:db,ILBPNativeAlerts:api,ILBPSounds:{message:tag=>sounds.push(tag)},addEventListener:(n,f)=>events[n]=f};
+ const context={window,document,navigator:{},Set,Date,console:{error(){}},setInterval:f=>poll=f,setTimeout:f=>{ /* banner expiration is not part of this test */ if(sessionChange&&f.toString().includes('setAccount'))f();}};
+ const source=fs.readFileSync(__dirname+'/message-alert-recovery.js','utf8');
+ vm.runInNewContext(source,context);await new Promise(r=>setImmediate(r));
+ assert.equal(queries.length,1);assert.equal(notices.length,0,'initial history is not alerted');
+ assert.equal(nativeAccounts.at(-1),'me');
+ api.account('');sessionChange('TOKEN_REFRESHED',{user:{id:'me'}});
+ assert(!nativeAccounts.includes(''),'token refresh must never disable background push recipient matching');
+ api.notify('audio','Áudio','Você recebeu uma mensagem de áudio.','message-live');
+ assert.equal(banners.length,1,'the bundled APK notification also displays an in-app banner');
+ rows=[{id:'live',created_at:'2026-11-02T18:00:00Z',attachment_type:'audio'},{id:'missed',created_at:'2026-11-02T18:00:00Z',attachment_type:'image',body:'caption'}];
+ await poll();assert.equal(notices.length,2,'recover a missed message without repeating the realtime notification');assert.equal(banners.length,2);assert.equal(notices[1][2],'Você recebeu uma foto.');
+ rows=[];await poll();assert.match(queries.at(-1).or,/id.gt.missed/,'pagination includes the id when timestamps tie');
+ document.visibilityState='hidden';const count=queries.length;await poll();assert.equal(queries.length,count,'no background polling while the screen is locked');
+ document.visibilityState='visible';fail=true;await poll();fail=false;
+ rows=[{id:'retry',created_at:'2026-11-02T18:01:00Z',attachment_type:'video'}];await poll();assert.equal(notices.at(-1)[2],'Você recebeu um vídeo.','a failed request does not prevent recovery');
+ sessionChange('SIGNED_OUT',null);await poll();assert.equal(notices.length,3,'sign-out stops recovery');
+ assert.equal(nativeAccounts.at(-1),'','real sign-out clears the native recipient');
+ vm.runInNewContext(source,context);assert.equal(notices.length,3,'loading the compatibility patch twice is safe');
+ console.log('PASS: bundled APK banners, missed-message recovery, deduplication, tied timestamps, visibility, network retry and logout.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

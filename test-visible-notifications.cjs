@@ -22,5 +22,10 @@ assert.equal(shown.length,5);assert.equal(banners.length,4,'the incoming call mu
 handlers.messages({new:{id:'audio',sender_id:'other',attachment_type:'audio'}});handlers.messages({new:{id:'self',sender_id:'me'}});await new Promise(r=>setImmediate(r));assert.equal(shown.length,5);
 pendingCall=true;handlers.messages({new:{id:'during-call',sender_id:'other'}});await new Promise(r=>setImmediate(r));assert.equal(banners.length,4,'messages arriving while ringing must not hide answer controls');assert.equal(shown.length,6);
 document.visibilityState='hidden';handlers.messages({new:{id:'background',sender_id:'other'}});await new Promise(r=>setImmediate(r));assert.equal(shown.length,7);assert.equal(banners.length,4);
+const native=[];window.ILBPNativeAlerts={notify(...args){native.push(args);return true;}};
+document.visibilityState='visible';pendingCall=false;
+for(const kind of ['audio','image','video',undefined]){handlers.messages({new:{id:'native-'+kind,sender_id:'other',attachment_type:kind,body:kind?'caption':'Olá',created_at:new Date().toISOString()}});await new Promise(r=>setImmediate(r));}
+assert.equal(banners.length,8,'Android system notifications must also show a banner in the open app');assert.equal(native.length,4);assert.equal(shown.length,7,'avoid duplicating native notifications through web push');assert.equal(sounds.length,5,'native notifications supply their own sound');
+assert.equal(native[0][2],'Você recebeu uma mensagem de áudio.');assert.equal(native[1][2],'Você recebeu uma foto.');assert.equal(native[2][2],'Você recebeu um vídeo.');assert.equal(native[3][2],'Olá');
 console.log('PASS: visible audio/photo/video/text/call banners and system alerts; hidden alerts; duplicates and self messages filtered');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -14,7 +14,7 @@ const html=asset('assets/web/index.html'),main=asset('assets/web/index-receber-v
 assert(html.indexOf('./ilbp-fixes-20260922.js')<html.indexOf('./ilbp-media.js'));
 const call=main.match(/window\.ILBPCreateClient\(`([^`]+)`,\s*`([^`]+)`/);assert(call);assert.equal(call[1],old);
 const source=fs.readFileSync('ilbp-fixes-20260922.js','utf8'),requests=[],clients=[];
-const document={querySelectorAll:()=>[],addEventListener(){},readyState:'loading',documentElement:{}};
+const document={baseURI:'https://bate.papo.il-talk.com.br/IL-Bate-Papo/',head:{appendChild(){}},createElement:()=>({}),querySelectorAll:()=>[],addEventListener(){},readyState:'loading',documentElement:{}};
 const window={localStorage:{getItem(){return null;}},fetch:async(...args)=>{requests.push(args);return new Response('ok');},supabase:{createClient:(...args)=>{clients.push(args);return {auth:{}};}}};
 const context=vm.createContext({window,document,MutationObserver:class{observe(){}},URL,Headers,Request,Response,console});
 vm.runInContext(source,context);vm.runInContext(asset('assets/web/ilbp-media.js'),context);
