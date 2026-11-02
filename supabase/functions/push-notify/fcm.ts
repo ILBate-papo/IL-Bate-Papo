@@ -30,7 +30,7 @@ export function fcmMessage(token: string,recipient: string,payload: Record<strin
  for(const [key,value] of Object.entries(payload))if(value!==undefined&&value!==null)data[key]=String(value);
  data.recipient_id=recipient;
  if(call){const created=Date.parse(String(payload.created_at||""));data.expires_at=String((Number.isFinite(created)?created:Date.now())+90000);}
- return {message:{token,data,android:{priority:"HIGH",ttl:call?"90s":"86400s"}}};
+ return {message:{token,data,android:{priority:"HIGH",ttl:call||payload.type==="call-end"?"90s":"86400s"}}};
 }
 export async function sendFcm(token: string,recipient: string,payload: Record<string, unknown>): Promise<void> {
  if(!token||token.length>4096||!recipient||payload.app_id!=="ilbp")throw new Error("FCM_INVALID_TARGET");

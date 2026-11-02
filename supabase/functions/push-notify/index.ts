@@ -8,11 +8,23 @@ const apps: Record<string, { id: string; name: string }> = {
   "https://bate.papo.il-talk.com.br": { id: "ilbp", name: "IL Bate Papo" },
 };
 
-webpush.setVapidDetails(
-  "https://il-chta.github.io/",
-  Deno.env.get("VAPID_PUBLIC_KEY") || "",
-  Deno.env.get("VAPID_PRIVATE_KEY") || "",
-);
+function fcmConfigured():boolean {
+  try{const account=JSON.parse(Deno.env.get("ILBP_FCM_SERVICE_ACCOUNT")||"{}");return account.project_id==="il-bate-papo-20261013-c1e4c"&&Boolean(account.client_email&&account.private_key);}catch{return false;}
+}
+console.info("ILBP_FCM_CONFIG_STATE",{configured:fcmConfigured()});
+
+const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY") || "";
+const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY") || "";
+let webpushConfigured = false;
+if (vapidPublic && vapidPrivate) {
+  try {
+    webpush.setVapidDetails("https://bate.papo.il-talk.com.br/", vapidPublic, vapidPrivate);
+    webpushConfigured = true;
+  } catch {
+    console.warn("ILBP_WEBPUSH_CONFIG_INVALID");
+  }
+}
+
 
 Deno.serve(async (request) => {
   const origin = request.headers.get("Origin") || "";
@@ -32,15 +44,33 @@ Deno.serve(async (request) => {
 
     const body = await request.json();
     if (body.sender_id !== caller.id) return Response.json({ error: "invalid sender" }, { status: 403, headers: cors });
+    if(body.type === "status" && app.id === "ilbp") {
+      return Response.json({fcmConfigured:fcmConfigured()},{headers:cors});
+    }
     const admin = createClient(url, service);
     let recipients: string[] = [];
+    let callCreatedAt: string | undefined;
 
     if (body.type === "call" && body.recipient_id && body.call_id) {
-      const { data: signal } = await admin.from("call_signals").select("call_id")
+      const { data: signal } = await admin.from("call_signals").select("call_id,created_at")
         .eq("call_id", body.call_id).eq("sender_id", caller.id)
         .eq("recipient_id", body.recipient_id).eq("signal_type", "offer").maybeSingle();
       if (!signal) return Response.json({ error: "call not found" }, { status: 403, headers: cors });
+      if(app.id === "ilbp") {
+        const created=Date.parse(signal.created_at);
+        if(!Number.isFinite(created)||Date.now()-created>=90000)return Response.json({sent:0,expired:true},{headers:cors});
+        const {data:terminal,error:terminalError}=await admin.from("call_signals").select("call_id").eq("call_id",body.call_id).in("signal_type",["answer","hangup"]).limit(1);
+        if(terminalError)throw terminalError;
+        if(terminal?.length)return Response.json({sent:0,ended:true},{headers:cors});
+        callCreatedAt=signal.created_at;
+      }
       recipients = [body.recipient_id];
+    } else if (body.type === "call-end" && app.id === "ilbp" && body.recipient_id && body.call_id) {
+      const {data: terminal} = await admin.from("call_signals").select("call_id")
+        .eq("call_id",body.call_id).eq("sender_id",caller.id).eq("recipient_id",body.recipient_id)
+        .in("signal_type",["answer","hangup"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
+      if(!terminal)return Response.json({error:"call not found"},{status:403,headers:cors});
+      recipients=[body.recipient_id];
     } else if (body.type === "message" && body.conversation_id) {
       const { data: membership } = await admin.from("conversation_members").select("user_id")
         .eq("conversation_id", body.conversation_id).eq("user_id", caller.id).maybeSingle();
@@ -56,18 +86,20 @@ Deno.serve(async (request) => {
     const isCall = body.type === "call";
     const mode = body.mode === "video" ? "vídeo" : "voz";
     const payload = JSON.stringify({
-      type: isCall ? "call" : "message",
+      type: body.type === "call-end" ? "call-end" : isCall ? "call" : "message",
+      sender_name: sender,
       title: isCall ? `Ligação de ${mode} no ${app.name}` : `Mensagem de ${sender}`,
       body: isCall ? `${sender} está ligando para você.` : String(body.preview || "Nova mensagem").slice(0, 140),
       app_id: app.id,
       mode: body.mode,
       attachment_type: body.attachment_type,
       call_id: body.call_id,
-      created_at: new Date().toISOString(),
+      created_at: callCreatedAt || new Date().toISOString(),
       tag: isCall ? `call-${body.call_id}` : `message-${body.conversation_id}`,
       url: "/",
     });
-    const { data: subscriptions } = await admin.from("push_subscriptions").select("id,user_id,subscription").in("user_id", recipients).contains("subscription", { app_id: app.id });
+    const { data: subscriptions, error: subscriptionError } = await admin.from("push_subscriptions").select("id,user_id,subscription").in("user_id", recipients).contains("subscription", { app_id: app.id });
+    if (subscriptionError) throw subscriptionError;
     let sent = 0;
     let failed = 0;
     for (const item of subscriptions || []) {
@@ -75,12 +107,14 @@ Deno.serve(async (request) => {
         if (item.subscription.transport === "fcm") {
           if(app.id!=="ilbp")throw new Error("FCM_APP_MISMATCH");
           await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload));
-        } else await webpush.sendNotification(item.subscription, payload, {
-          TTL: isCall ? 90 : 86400,
+        } else { if (!webpushConfigured) throw new Error("WEBPUSH_NOT_CONFIGURED"); await webpush.sendNotification(item.subscription, payload, {
+          TTL: isCall || body.type === "call-end" ? 90 : 86400,
           urgency: isCall ? "high" : "normal",
           topic: isCall ? (`call-${String(body.call_id).replace(/[^a-zA-Z0-9_-]/g, "")}`).slice(0, 32) : undefined,
         });
+        }
         sent += 1;
+        if(app.id === "ilbp") console.info("ILBP_PUSH_PROVIDER_ACCEPTED", { type: body.type, call_id: body.call_id || null, recipient_id: item.user_id, transport: item.subscription.transport === "fcm" ? "fcm" : "webpush" });
       } catch (error) {
         failed += 1;
         const statusCode = (error as { statusCode?: number }).statusCode;
@@ -89,6 +123,7 @@ Deno.serve(async (request) => {
         } else console.error("push delivery failed", { subscription_id: item.id, statusCode, message: error instanceof Error ? error.message : String(error) });
       }
     }
+    if(app.id === "ilbp") console.info("ILBP_PUSH_SUMMARY", { type: body.type, call_id: body.call_id || null, recipients: recipients.length, subscriptions: subscriptions?.length || 0, accepted: sent, failed });
     return Response.json({ sent, failed, recipients: recipients.length }, { headers: cors });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
