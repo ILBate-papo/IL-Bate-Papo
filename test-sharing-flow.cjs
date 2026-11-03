@@ -51,13 +51,14 @@ async function inviteCase({blocked=false,changedAccount=false,cancel=false}={}){
  assert.equal(new URL(iw.document.querySelector('#continue-chat').href).searchParams.get('contato'),'<img>');
  assert.equal(iw.localStorage.getItem('ilbp-pending-contact'),'<img>');
  let downloaded=0;
- iw.fetch=async url=>({ok:true,text:async()=>fs.readFileSync(__dirname+'/downloads/'+new URL(url).pathname.split('/downloads/')[1],'utf8')});
+ iw.AbortController=AbortController;
+ iw.fetch=async url=>({ok:true,arrayBuffer:async()=>{const b=fs.readFileSync(__dirname+'/downloads/'+new URL(url).pathname.split('/downloads/')[1]);return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength)}});
  Object.defineProperty(iw.crypto,'subtle',{value:require('node:crypto').webcrypto.subtle});
- iw.URL.createObjectURL=blob=>{assert.equal(blob.size,2876260);return 'blob:apk'};iw.URL.revokeObjectURL=()=>{};
- const originalClick=iw.HTMLAnchorElement.prototype.click;iw.HTMLAnchorElement.prototype.click=function(){if(this.download==='IL-Bate-Papo-1.0.6-TESTE.apk'){downloaded++;return;}return originalClick.call(this)};
+ iw.URL.createObjectURL=blob=>{assert.equal(blob.size,2763791);return 'blob:apk'};iw.URL.revokeObjectURL=()=>{};
+ const originalClick=iw.HTMLAnchorElement.prototype.click;iw.HTMLAnchorElement.prototype.click=function(){if(this.download==='IL-Bate-Papo-1.0.8-TESTE.apk'){downloaded++;return;}return originalClick.call(this)};
  iw.document.querySelector('#android-download').click();for(let i=0;i<200&&!downloaded&&!iw.document.querySelector('#install-status').textContent.startsWith('Não foi');i++)await tick();
  assert.equal(downloaded,1,iw.document.querySelector('#install-status').textContent);assert.match(iw.document.querySelector('#install-status').textContent,/volte a este convite/);
- iw.fetch=async()=>({ok:true,text:async()=>Buffer.from('corrupted APK').toString('base64')});
+ iw.fetch=async()=>({ok:true,arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer});
  iw.document.querySelector('#android-download').click();await tick();assert.equal(downloaded,1);assert.match(iw.document.querySelector('#install-status').textContent,/Não foi possível baixar/);
  installDom.window.close();
  console.log('Passed: canonical sharing, WhatsApp/copy/native share, invitation resumed after login, no duplicate dialog, cancellation, blocked contacts, account changes and pasted invite search.');
