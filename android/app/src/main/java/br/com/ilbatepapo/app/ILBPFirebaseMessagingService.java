@@ -10,6 +10,16 @@ public final class ILBPFirebaseMessagingService extends FirebaseMessagingService
   String account=PushState.account(this);
   if(account.isEmpty()||!account.equals(data.get("recipient_id")))return;
   String type=data.get("type");boolean call="call".equals(type);
+  if("call-end".equals(type)){
+   String name=data.get("sender_name");
+   if(name==null||name.trim().isEmpty())name="Alguém";
+   String mode="video".equals(data.get("mode"))?"videochamada":"chamada de voz";
+   String callId=data.get("call_id");
+   NativeNotifications.show(this,"message","Chamada encerrada — "+name,
+    name+" encerrou uma "+mode+". Consulte o histórico de chamadas.",
+    "ended-"+(callId==null?message.getMessageId():callId));
+   return;
+  }
   if(call){try{long expiry=Long.parseLong(data.get("expires_at"));if(System.currentTimeMillis()>expiry)return;}catch(Exception invalid){return;}}
   String kind=call?("video".equals(data.get("mode"))?"video-call":"call"):("audio".equals(data.get("attachment_type"))?"audio":"message");
   String title=data.get("title"),body=data.get("body"),tag=data.get("tag");
