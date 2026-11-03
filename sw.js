@@ -18,6 +18,14 @@ self.addEventListener("push", function (event) {
     data = { body: event.data ? event.data.text() : "Você tem uma novidade no IL Bate Papo." };
   }
   if (!data || typeof data !== "object") data = {};
+  if(data.type === "call-end") {
+    event.waitUntil((async function(){
+      var notices=self.registration.getNotifications?await self.registration.getNotifications():[];
+      for(var notice of notices)if(notice.data?.call_id===data.call_id||notice.tag==="call-"+data.call_id||notice.tag==="ilbp-call-"+data.call_id)notice.close();
+      if(data.missed_call===true||data.missed_call==="true")await self.registration.showNotification(data.title||"Chamada perdida",{body:data.body||"Você recebeu uma chamada não atendida.",tag:"missed-"+data.call_id,icon:new URL("icon.svg",self.registration.scope).href,data:{url:ILBP_HOME,type:"missed-call",call_id:data.call_id}});
+    })());
+    return;
+  }
   var isCall = data.type === "call";
   var isVideoCall = isCall && data.mode === "video";
   var kind = data.attachment_type || data.message_type;

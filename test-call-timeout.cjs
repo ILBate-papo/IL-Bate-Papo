@@ -1,0 +1,10 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const source=fs.readFileSync(__dirname+'/index-receber-video-20260906.js','utf8');
+const start=source.indexOf('ringTimer=window.setTimeout('),end=source.indexOf(',90000)',start)+7;
+assert(start>0&&end>start);const code=source.slice(start,end);
+let timeout,delay,ended=0,notices=[],sent=[];
+const context={n:true,h:{},ringTimer:null,window:{setTimeout(fn,ms){timeout=fn;delay=ms;return 1}},a:async(...args)=>sent.push(args),s:text=>notices.push(text),o:()=>ended++};
+vm.createContext(context);vm.runInContext(code,context);assert.equal(delay,90000);timeout();assert.equal(ended,1);assert.equal(sent[0][0],'hangup');assert.equal(sent[0][1].reason,'timeout');assert.match(notices[0],/não foi atendida/);
+context.h.remoteDescription={type:'answer'};timeout();assert.equal(ended,1,'answered call cannot time out');
+context.h={};context.n=false;timeout();assert.equal(ended,1,'disposed call cannot end a new call');
+console.log('PASS: unanswered outgoing call sends hangup and ends locally at 90 seconds; answered and disposed calls are protected.');

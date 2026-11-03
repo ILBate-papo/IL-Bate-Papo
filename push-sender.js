@@ -39,6 +39,8 @@
             call_id: row.call_id,
             mode: row.payload && row.payload.mode || "audio"
           }, headers);
+        } else if (url.includes("/call_signals") && ["answer","hangup"].includes(row.signal_type)) {
+          sendPush({type:"call-end",sender_id:row.sender_id,recipient_id:row.recipient_id,call_id:row.call_id},headers);
         } else if (url.includes("/messages") && row.conversation_id && row.sender_id) {
           sendPush({
             type: "message",
