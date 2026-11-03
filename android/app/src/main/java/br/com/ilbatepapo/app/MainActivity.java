@@ -28,6 +28,7 @@ public class MainActivity extends Activity {
  private PermissionRequest pending;
  private ValueCallback<Uri[]> files;
  private String pendingSession;
+ private JSONObject pendingCallAction;
  private GeolocationPermissions.Callback locationCallback;
  private String locationOrigin;
  private static final String SUPABASE="https://cipfycetzelxzwpfaqiu.supabase.co";
@@ -37,7 +38,7 @@ public class MainActivity extends Activity {
  private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&(HOST.equals(uri.getHost())||"ilbate-papo.github.io".equals(uri.getHost()))&&(uri.getPath().isEmpty()||uri.getPath().equals("/")||uri.getPath().equals("/index.html")||uri.getPath().startsWith("/IL-Bate-Papo/"));}
  @Override public void onCreate(Bundle state){super.onCreate(state);web=new WebView(this);web.setBackgroundColor(android.graphics.Color.rgb(7,21,34));setContentView(web);
   web.setOnApplyWindowInsetsListener((view,insets)->{if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.ime());view.setPadding(bars.left,bars.top,bars.right,bars.bottom);}return insets;});
-  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.4");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->{PushState.token(this,token);sendNotificationState();});s.setMediaPlaybackRequiresUserGesture(true);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.8");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->{PushState.token(this,token);sendNotificationState();});s.setMediaPlaybackRequiresUserGesture(false);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
   web.setWebViewClient(new WebViewClient(){@Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showLoadError();}
    @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){if(request.isForMainFrame()&&response.getStatusCode()>=400)showLoadError();}
    @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if("ilbp-share".equals(uri.getScheme())){if(request.isForMainFrame()&&request.hasGesture()&&trusted(Uri.parse(view.getUrl()))){String text=uri.getQueryParameter("text");if(text!=null&&text.length()<=4000){Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,text);try{startActivity(Intent.createChooser(share,"Compartilhar contato"));}catch(Exception ignored){new AlertDialog.Builder(MainActivity.this).setMessage("Nenhum aplicativo disponível para compartilhar.").setPositiveButton("OK",null).show();}}}return true;}if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();connectNativeNotifications();}});
@@ -69,7 +70,7 @@ public class MainActivity extends Activity {
   });
   if(state!=null)web.restoreState(state);else web.loadUrl("https://bate.papo.il-talk.com.br/");
   web.setDownloadListener((url,agent,disposition,mime,length)->{Uri uri=Uri.parse(url);if(trusted(uri)&&uri.getPath().endsWith(".apk"))try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}});
-  handleAuthReturn(getIntent().getData());
+  handleAuthReturn(getIntent().getData());handleCallIntent(getIntent());
  }
 
  private void showLoadError(){
@@ -84,7 +85,7 @@ public class MainActivity extends Activity {
 
  private void sendNotificationState(){
   if(notificationPort==null)return;
-  try{notificationPort.postMessage(new WebMessage(new JSONObject().put("type","state").put("permission",NativeNotifications.permitted(this)).put("backgroundPush",!PushState.token(this).isEmpty()).put("fcmToken",PushState.token(this)).toString()));}catch(Exception ignored){}
+  try{notificationPort.postMessage(new WebMessage(new JSONObject().put("type","state").put("permission",NativeNotifications.permitted(this)).put("backgroundPush",!PushState.token(this).isEmpty()).put("fcmToken",PushState.token(this)).put("fullScreenAllowed",NativeCalls.fullScreenAllowed(this)).put("callSoundEnabled",NativeNotifications.callSoundEnabled(this)).toString()));}catch(Exception ignored){}
  }
  private void connectNativeNotifications(){
   if(web.getUrl()==null||!trusted(Uri.parse(web.getUrl())))return;
@@ -94,8 +95,12 @@ public class MainActivity extends Activity {
    if(web.getUrl()==null||!trusted(Uri.parse(web.getUrl()))||message.getData()==null||message.getData().length()>2500)return;
    try{
     JSONObject data=new JSONObject(message.getData());String type=data.optString("type");
-    if("push-account".equals(type)){String id=data.optString("userId");if(id.isEmpty()||id.matches("[a-fA-F0-9-]{36}"))PushState.account(MainActivity.this,id);return;}
-    if("ready".equals(type)){sendNotificationState();return;}
+    if("push-account".equals(type)){String id=data.optString("userId");if(id.isEmpty()||id.matches("[a-fA-F0-9-]{36}")){if(!id.equals(PushState.account(MainActivity.this))){getSystemService(android.app.NotificationManager.class).cancelAll();getSharedPreferences("incoming_calls",MODE_PRIVATE).edit().clear().apply();pendingCallAction=null;}PushState.account(MainActivity.this,id);}return;}
+    if("ready".equals(type)){sendNotificationState();sendPendingCallAction();return;}
+    if("call-action-ack".equals(type)){if(pendingCallAction!=null&&pendingCallAction.optString("callId").equals(data.optString("callId")))pendingCallAction=null;return;}
+    if("close-call".equals(type)){NativeCalls.close(MainActivity.this,data.optString("callId"));return;}
+    if("call-settings".equals(type)){Intent settings=new Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,getPackageName()).putExtra(android.provider.Settings.EXTRA_CHANNEL_ID,"video".equals(data.optString("mode"))?"ilbp-video-calls-v1":"ilbp-voice-calls-v1");startActivity(settings);return;}
+    if("full-screen-settings".equals(type)&&android.os.Build.VERSION.SDK_INT>=34){startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,Uri.parse("package:"+getPackageName())));return;}
     if("enable-alerts".equals(type)){
      if(!NativeNotifications.permitted(MainActivity.this)&&android.os.Build.VERSION.SDK_INT>=33){notificationTestPending=true;requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},44);}
      else{NativeNotifications.show(MainActivity.this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");sendNotificationState();}return;
@@ -108,6 +113,18 @@ public class MainActivity extends Activity {
   }});
   web.postWebMessage(new WebMessage("ilbp-native-notifications",new WebMessagePort[]{ports[1]}),Uri.parse("https://"+Uri.parse(web.getUrl()).getHost()));
  }
+ private void handleCallIntent(Intent intent){
+  String id=intent.getStringExtra("call_id"),action=intent.getStringExtra("call_action");
+  if(!NativeCalls.validId(id)||!("answer".equals(action)||"decline".equals(action)))return;
+  JSONObject call=NativeCalls.get(this,id);if(call==null||!call.optString("actionToken").equals(intent.getStringExtra("call_action_token")))return;
+  try{pendingCallAction=new JSONObject().put("type","call-action").put("callId",id).put("action",action).put("recipient",call.optString("recipient")).put("expires",call.optLong("expires"));}catch(Exception ignored){return;}
+  NativeCalls.close(this,id);sendPendingCallAction();
+ }
+ private void sendPendingCallAction(){
+  if(notificationPort==null||pendingCallAction==null)return;
+  try{notificationPort.postMessage(new WebMessage(pendingCallAction.toString()));}catch(Exception ignored){}
+ }
+ @Override protected void onResume(){super.onResume();if(web!=null){sendNotificationState();sendPendingCallAction();}}
  private boolean isGoogleStart(Uri uri){return "https".equals(uri.getScheme())&&"cipfycetzelxzwpfaqiu.supabase.co".equals(uri.getHost())&&"/auth/v1/authorize".equals(uri.getPath())&&"google".equals(uri.getQueryParameter("provider"));}
  private SharedPreferences authFlow(){return getSharedPreferences("google_login_pending",MODE_PRIVATE);}
  private void loginError(String message){if(!isFinishing())new AlertDialog.Builder(this).setTitle("Entrar com Google").setMessage(message).setPositiveButton("OK",null).show();}
@@ -121,7 +138,7 @@ public class MainActivity extends Activity {
    startActivity(new Intent(Intent.ACTION_VIEW,url));
   }catch(Exception error){authFlow().edit().clear().apply();loginError("Não foi possível abrir o Google. Confira se há um navegador instalado.");}
  }
- @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);handleAuthReturn(intent.getData());}
+ @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);handleAuthReturn(intent.getData());handleCallIntent(intent);}
  private void handleAuthReturn(Uri uri){
   if(uri==null||!"br.com.ilbatepapo.app".equals(uri.getScheme())||!"auth-callback".equals(uri.getHost()))return;
   SharedPreferences saved=authFlow();String verifier=saved.getString("verifier",null);long started=saved.getLong("started",0);saved.edit().clear().commit();

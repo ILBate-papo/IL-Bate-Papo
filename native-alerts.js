@@ -1,7 +1,11 @@
 (function(){
  'use strict';
  let port=null;
- const api=window.ILBPNativeAlerts={available:false,permission:false,backgroundPush:false,fcmToken:null,
+ const api=window.ILBPNativeAlerts={available:false,permission:false,backgroundPush:false,fcmToken:null,fullScreenAllowed:false,callSoundEnabled:false,
+  ackCallAction(callId){if(port)port.postMessage(JSON.stringify({type:"call-action-ack",callId}));},
+  closeCall(callId){if(port)port.postMessage(JSON.stringify({type:"close-call",callId}));},
+  callSettings(mode){if(port)port.postMessage(JSON.stringify({type:"call-settings",mode:mode||"audio"}));},
+  fullScreenSettings(){if(port)port.postMessage(JSON.stringify({type:"full-screen-settings"}));},
   account(userId){if(port)port.postMessage(JSON.stringify({type:"push-account",userId:userId||""}));},
   enable(){if(port)port.postMessage(JSON.stringify({type:'enable-alerts'}));},
   notify(kind,title,body,tag){
@@ -16,7 +20,8 @@
   if(port)port.close();port=event.ports[0];api.available=true;
   port.onmessage=event=>{
    try{
-    const state=JSON.parse(event.data);if(state.type!=='state')return;
+    const state=JSON.parse(event.data);if(state.type==='call-action'){window.dispatchEvent(new CustomEvent('ilbp-native-call-action',{detail:state}));return;}if(state.type!=='state')return;
+    api.fullScreenAllowed=state.fullScreenAllowed===true;api.callSoundEnabled=state.callSoundEnabled===true;
     api.fcmToken=typeof state.fcmToken==="string"?state.fcmToken:null;api.permission=state.permission===true;api.backgroundPush=state.backgroundPush===true;
     window.dispatchEvent(new Event('ilbp-native-alert-state'));
    }catch{}

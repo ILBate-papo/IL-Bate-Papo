@@ -8,7 +8,12 @@ import android.os.Build;
 public final class NativeNotifications {
  private NativeNotifications(){}
  public static boolean permitted(Context context){
-  return Build.VERSION.SDK_INT<33||context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED;
+  return context.getSystemService(NotificationManager.class).areNotificationsEnabled()&&(Build.VERSION.SDK_INT<33||context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)==PackageManager.PERMISSION_GRANTED);
+ }
+ public static boolean callSoundEnabled(Context context){
+  createChannels(context);NotificationManager manager=context.getSystemService(NotificationManager.class);
+  NotificationChannel voice=manager.getNotificationChannel("ilbp-voice-calls-v1"),video=manager.getNotificationChannel("ilbp-video-calls-v1");
+  return permitted(context)&&voice.getImportance()>=NotificationManager.IMPORTANCE_DEFAULT&&voice.getSound()!=null&&video.getImportance()>=NotificationManager.IMPORTANCE_DEFAULT&&video.getSound()!=null;
  }
  public static void createChannels(Context context){
   NotificationManager manager=context.getSystemService(NotificationManager.class);
@@ -27,6 +32,7 @@ public final class NativeNotifications {
   if(!permitted(context))return false;
   createChannels(context);
   boolean call="call".equals(kind)||"video-call".equals(kind);
+  if(call&&tag!=null&&tag.startsWith("call-"))return NativeCalls.show(context,tag.substring(5),PushState.account(context),title,"video-call".equals(kind)?"video":"audio",System.currentTimeMillis()+90000);
   String channel="video-call".equals(kind)?"ilbp-video-calls-v1":"call".equals(kind)?"ilbp-voice-calls-v1":"audio".equals(kind)?"ilbp-audio-v1":"ilbp-messages-v1";
   Intent intent=new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent open=PendingIntent.getActivity(context,0,intent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);

@@ -99,6 +99,7 @@
   }
   async function onCall(row) {
     if(user && row && [row.sender_id,row.recipient_id].includes(user.id) && ["answer","hangup"].includes(row.signal_type)){
+      window.ILBPNativeAlerts?.closeCall?.(row.call_id);
       closedCalls.add(row.call_id);
       seen.add("c:"+row.call_id);
       navigator.serviceWorker?.controller?.postMessage({type:"ILBP_CLOSE_CALL",callId:row.call_id});

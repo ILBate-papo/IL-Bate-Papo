@@ -1,47 +1,43 @@
-# IL Bate Papo Android 1.0.4 — integração preparada
+# IL Bate Papo Android 1.0.8
 
-Pacote `br.com.ilbatepapo.app`, versionCode 5, Android 8 ou superior.
-Firebase: `il-bate-papo-20261013-c1e4c`, configuração Android fornecida pelo usuário.
+Pacote `br.com.ilbatepapo.app`, versionCode 10, Android 8 ou superior.
 
-Inclui Firebase Messaging nativo, registro do token ligado à conta autenticada,
-notificações com canais de som/vibração e expiração de chamadas. O receptor
-confere aplicativo, destinatário e validade antes de exibir o aviso.
-O WebView usa o domínio confiável na comunicação nativa.
+Esta versão restaura os controles nativos de chamada (tela recebida, atender,
+recusar e encerramento) a partir do código 1.0.5 salvo, preservando o banco
+atual, o login Google e os recursos de localização do repositório.
+O aplicativo carrega o site atual, sem substituir scripts por cópias antigas
+embutidas. Publicar o código web junto com esta atualização é necessário.
 
-O recebimento remoto depende da publicação do código web corrigido e da Edge
-Function `push-notify` no Supabase `cipfycetzelxzwpfaqiu`, com o segredo privado
-`ILBP_FCM_SERVICE_ACCOUNT` correspondente ao projeto Firebase.
-`google-services.json` não substitui essa credencial de servidor.
-Não publicar esse segredo no repositório nem no aplicativo.
+O servidor só marca uma chamada perdida quando há oferta e encerramento
+registrados, o remetente é quem iniciou e não existe resposta. O sinal de
+encerramento continua chegando nas chamadas atendidas para fechar o aviso.
+Tentativas sem resposta encerram após 90 segundos enquanto o cliente de
+origem estiver executando. Fechar ou suspender esse cliente pode adiar o
+encerramento: não há agendador de chamadas no servidor nesta versão.
 
-## Assinatura original
+## Compilação
 
-A compilação release usa a chave original quando as variáveis
-`ILBP_KEYSTORE`, `ILBP_STORE_PASSWORD`, `ILBP_KEY_ALIAS` e `ILBP_KEY_PASSWORD`
-estão definidas. Sem elas, o resultado é **não assinado e não instalável**.
-Não gerar outra chave para atualizar a versão existente.
+JDK 17, Gradle 8.11.1, Android SDK/build-tools 35 e AGP 8.9.2.
+Executar `gradle :app:assembleRelease` em `android`.
 
-Certificado SHA-256 verificado no APK 1.0.3 existente no repositório:
+A assinatura release usa `ILBP_KEYSTORE`, `ILBP_STORE_PASSWORD`,
+`ILBP_KEY_ALIAS` e `ILBP_KEY_PASSWORD`. Manter credenciais fora do repositório.
+Sem elas, o APK release não estará assinado.
+
+Certificado do APK 1.0.6, preservado nesta atualização:
 `38467574e0deffa69c74cdee241a6488842dde48238ce07b69fc8bd2558ac3c6`.
-Depois da assinatura, executar `apksigner verify --print-certs` e comparar
-esse digest antes de distribuir. A chave privada não pode ser recuperada
-desse certificado ou do APK.
+Comparar com `apksigner verify --print-certs` antes de distribuir.
 
-O backup da chave original deve ficar fora do repositório e do ZIP de código,
-em armazenamento privado protegido por senha. Preservar alias e senhas
-em local privado separado. Nenhum backup da chave foi feito nesta sessão:
-o arquivo privado não estava disponível.
+Firebase: `il-bate-papo-20261013-c1e4c`.
+Servidor: `push-notify` no Supabase `cipfycetzelxzwpfaqiu`.
+O segredo `ILBP_FCM_SERVICE_ACCOUNT` pertence somente ao servidor.
 
-## Compilação e validação
+## Limites da validação
 
-JDK 17, Gradle 8.11.1, Android SDK/build-tools 35, AGP 8.9.2. Em `android`, executar
-`gradle :app:assembleRelease`. AndroidX está habilitado e as versões do Google
-Services e Firebase estão fixadas nos arquivos Gradle.
+Compilação release e certificado de assinatura verificados localmente.
 
-Compilação release verificada sem assinatura. Não houve teste físico de
-entrega, chamada, som ou vibração. O toque depende dos canais, permissões e
-políticas do Android. Não há ação de atender/recusar na tela bloqueada nem
-promessa de funcionamento equivalente ao WhatsApp.
-
-O APK carrega o site remoto. Compilar, sozinho, não publica as correções web
-e não ativa o servidor de notificações. Nenhuma cobrança foi ativada.
+Os testes locais exercitam o bridge nativo, atender/recusar, encerramento,
+expiração, notificações visíveis e classificação de chamadas perdidas.
+Eles não substituem testes de entrega FCM, áudio, vídeo e repouso prolongado
+em aparelhos físicos. Permissões, canais de notificação e restrições de
+bateria do Android continuam afetando o recebimento.

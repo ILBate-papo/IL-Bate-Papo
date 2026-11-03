@@ -6,6 +6,8 @@ vm.createContext(context);vm.runInContext(stripTypeScriptTypes(source),context);
  const call=context.fcmMessage('token','recipient',{app_id:'ilbp',type:'call',mode:'video'});
  assert.equal(call.message.android.priority,'HIGH');assert.equal(call.message.android.ttl,'90s');
  assert.equal(call.message.data.recipient_id,'recipient');assert(Number(call.message.data.expires_at)>Date.now());
+ const end=context.fcmMessage('token','recipient',{app_id:'ilbp',type:'call-end',missed_call:false});assert.equal(end.message.android.priority,'HIGH');
+ const missed=context.fcmMessage('token','recipient',{app_id:'ilbp',type:'call-end',missed_call:true});assert.equal(missed.message.android.priority,'HIGH');
  const audio=context.fcmMessage('token','recipient',{app_id:'ilbp',type:'message',attachment_type:'audio',nothing:undefined});
  assert.equal(audio.message.android.ttl,'86400s');assert.equal(audio.message.data.attachment_type,'audio');assert(!('nothing' in audio.message.data));
  await assert.rejects(()=>context.sendFcm('token','recipient',{app_id:'ilchats'}),/FCM_INVALID_TARGET/);

@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
  let handler,authorized=true,fail=false,dbError=false;const accepted=[],logs=[];
  const db={auth:{getUser:async()=>({data:{user:authorized?{id:'sender'}:null}})},from(table){
   const q={select(){return this},eq(){return this},neq(){return this},in(){return this},order(){return this},limit(){return this},delete(){return this},
-   async maybeSingle(){return {data:table==='profiles'?{display_name:'Contato'}:{call_id:'call',created_at:new Date().toISOString(),user_id:'sender'}}},
+   async maybeSingle(){return {data:table==='profiles'?{display_name:'Contato'}:{call_id:'call',created_at:new Date().toISOString(),user_id:'sender',sender_id:'sender',recipient_id:'recipient',signal_type:'hangup',payload:{mode:'video'}}}},
    async contains(){return dbError?{error:new Error('subscription query failed')}:{data:[{id:'registration',user_id:'recipient',subscription:{app_id:'ilbp',transport:'fcm',token:'private-token'}}]};} };
   return q;
  }};
