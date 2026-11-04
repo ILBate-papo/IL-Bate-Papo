@@ -53,19 +53,35 @@
     }
   };
 
+  const isDeviceStartError = error =>
+    ['NotReadableError', 'AbortError', 'OverconstrainedError'].includes(error.name);
   let captureQueue = Promise.resolve();
   window.ILBPGetUserMedia = function (constraints) {
     const capture = async () => {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador não oferece acesso à câmera e ao microfone.');
       try { return await navigator.mediaDevices.getUserMedia(constraints); }
       catch (error) {
-        if (!['NotReadableError','AbortError','OverconstrainedError'].includes(error.name)) throw error;
+        if (!isDeviceStartError(error)) throw error;
         // Retry only device-start failures, never a denied permission.
         await new Promise(resolve => setTimeout(resolve, 350));
-        return navigator.mediaDevices.getUserMedia({
-          audio: constraints.audio ? true : false,
-          video: constraints.video || false
-        });
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            audio: Boolean(constraints.audio),
+            video: constraints.video || false
+          });
+        } catch (retryError) {
+          if (!constraints.audio || !constraints.video || !isDeviceStartError(retryError)) throw retryError;
+          // Some Android WebViews fail to start both devices in a single request.
+          const microphone = await navigator.mediaDevices.getUserMedia({audio: true, video: false});
+          try {
+            const camera = await navigator.mediaDevices.getUserMedia({audio: false, video: constraints.video});
+            camera.getVideoTracks().forEach(track => microphone.addTrack(track));
+            return microphone;
+          } catch (cameraError) {
+            microphone.getTracks().forEach(track => track.stop());
+            throw cameraError;
+          }
+        }
       }
     };
     const result = captureQueue.then(capture);
