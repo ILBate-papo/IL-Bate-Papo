@@ -63,7 +63,7 @@
   async function show(title, body, isCall, tag, createdAt) {
     if (!("Notification" in window) || Notification.permission !== "granted" || !registration) return;
     if(isCall && registration.getNotifications && (await registration.getNotifications({tag:tag})).length)return;
-    await registration.showNotification(title, { body: body, timestamp: Date.parse(createdAt) || Date.now(), silent: false, icon: new URL("./icon.svg",document.baseURI).href, badge: new URL("./icon.svg",document.baseURI).href, tag: tag, renotify: true, requireInteraction: isCall, vibrate: isCall ? [700,300,700,300,900] : [250,120,250], data: { url: new URL("/",location.href).href, type: isCall ? "call" : "message" } });
+    await registration.showNotification(title, { body: body, timestamp: Date.parse(createdAt) || Date.now(), silent: false, icon: new URL("./android/app/src/main/res/drawable/lion.png",document.baseURI).href, badge: new URL("./icon.svg",document.baseURI).href, tag: tag, renotify: true, requireInteraction: isCall, vibrate: isCall ? [700,300,700,300,900] : [250,120,250], data: { url: new URL("/",location.href).href, type: isCall ? "call" : "message" } });
   }
   async function senderName(id) { var result = await client().from("profiles").select("display_name").eq("id", id).maybeSingle(); return result.data && result.data.display_name || "Alguém"; }
 
@@ -179,7 +179,7 @@
       if(!registration||!user)await start();if(!user)throw new Error('Entre na sua conta para ativar os avisos.');
       if(window.ILBPSounds)await window.ILBPSounds.unlock();
       await subscribeForPush();
-      await registration.showNotification('IL Bate Papo: avisos ativados',{body:'Este é um teste dos avisos neste aparelho.',icon:new URL('./icon.svg',document.baseURI).href,tag:'alerts-test',silent:false,vibrate:[250,120,250]});
+      await registration.showNotification('IL Bate Papo: avisos ativados',{body:'Este é um teste dos avisos neste aparelho.',icon:new URL('./android/app/src/main/res/drawable/lion.png',document.baseURI).href,tag:'alerts-test',silent:false,vibrate:[250,120,250]});
       status.textContent='Inscrição salva e aviso local exibido. Confirme a entrega enviando uma mensagem de outro aparelho com esta tela bloqueada.';
     }catch(error){status.textContent=error.message||'Não foi possível ativar. Tente novamente.';}finally{button.disabled=false;}};
     section.append(button,status);profile.appendChild(section);

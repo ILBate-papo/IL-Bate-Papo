@@ -43,7 +43,7 @@ self.addEventListener("push", function (event) {
   if(isCall && existing.length && !expiredCall)return;
   await self.registration.showNotification(title, {
     body: body,
-    icon: new URL("icon.svg",self.registration.scope).href,
+    icon: new URL("android/app/src/main/res/drawable/lion.png",self.registration.scope).href,
     badge: new URL("icon.svg",self.registration.scope).href,
     tag: tag,
     renotify: true,
