@@ -93,6 +93,14 @@ public class MainActivity extends Activity {
    .setOnDismissListener(dialog->loadErrorShowing=false).show();
  }
 
+ private void showCallDeliveryDiagnostics(){
+  android.content.SharedPreferences report=getSharedPreferences("call_delivery_diagnostics",MODE_PRIVATE);
+  long time=report.getLong("time",0);
+  String result=time==0?"Nenhum aviso de chamada foi registrado pelo APK.":"Último aviso: "+
+   java.text.DateFormat.getDateTimeInstance().format(new java.util.Date(time))+"\n"+report.getString("result","");
+  new AlertDialog.Builder(this).setTitle("Diagnóstico de chamadas").setMessage(result)
+   .setPositiveButton("OK",null).show();
+ }
  private void sendNotificationState(){
   if(notificationPort==null)return;
   try{notificationPort.postMessage(new WebMessage(new JSONObject().put("type","state").put("permission",NativeNotifications.permitted(this)).put("backgroundPush",!PushState.token(this).isEmpty()).put("fcmToken",PushState.token(this)).put("fullScreenAllowed",NativeCalls.fullScreenAllowed(this)).put("callSoundEnabled",NativeNotifications.callSoundEnabled(this)).toString()));}catch(Exception ignored){}
@@ -113,7 +121,7 @@ public class MainActivity extends Activity {
     if("full-screen-settings".equals(type)&&android.os.Build.VERSION.SDK_INT>=34){startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,Uri.parse("package:"+getPackageName())));return;}
     if("enable-alerts".equals(type)){
      if(!NativeNotifications.permitted(MainActivity.this)&&android.os.Build.VERSION.SDK_INT>=33){notificationTestPending=true;requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},44);}
-     else{NativeNotifications.show(MainActivity.this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");sendNotificationState();}return;
+     else{NativeNotifications.show(MainActivity.this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");sendNotificationState();showCallDeliveryDiagnostics();}return;
     }
     if(!"notify".equals(type))return;
     String kind=data.optString("kind");if(!java.util.Arrays.asList("message","audio","call","video-call").contains(kind))return;

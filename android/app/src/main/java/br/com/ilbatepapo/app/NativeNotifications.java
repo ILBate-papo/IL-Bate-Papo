@@ -2,6 +2,7 @@ package br.com.ilbatepapo.app;
 import android.Manifest;
 import android.app.*;
 import android.content.*;
+import android.graphics.drawable.Icon;
 import android.content.pm.PackageManager;
 import android.media.*;
 import android.os.Build;
@@ -37,7 +38,7 @@ public final class NativeNotifications {
   Intent intent=new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent open=PendingIntent.getActivity(context,0,intent,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
   Notification.Builder builder=new Notification.Builder(context,channel).setSmallIcon(android.R.drawable.stat_notify_chat)
-   .setContentTitle(title).setContentText(body).setStyle(new Notification.BigTextStyle().bigText(body))
+   .setLargeIcon(Icon.createWithResource(context,R.drawable.lion)).setContentTitle(title).setContentText(body).setStyle(new Notification.BigTextStyle().bigText(body))
    .setCategory(call?Notification.CATEGORY_CALL:Notification.CATEGORY_MESSAGE).setVisibility(Notification.VISIBILITY_PRIVATE)
    .setContentIntent(open).setAutoCancel(true).setShowWhen(true).setWhen(System.currentTimeMillis());
   if(call)builder.setTimeoutAfter(90000);
