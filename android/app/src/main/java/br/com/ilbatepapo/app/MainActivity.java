@@ -35,7 +35,17 @@ public class MainActivity extends Activity {
  private static final String PUBLIC_KEY="sb_publishable_5AjtGWLaJG8VSk22RJpePA_k_DPQAuk";
  private static final String CALLBACK="br.com.ilbatepapo.app://auth-callback";
  private static final String HOST="bate.papo.il-talk.com.br";
- private boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&(HOST.equals(uri.getHost())||"ilbate-papo.github.io".equals(uri.getHost()))&&(uri.getPath().isEmpty()||uri.getPath().equals("/")||uri.getPath().equals("/index.html")||uri.getPath().startsWith("/IL-Bate-Papo/"));}
+ private boolean trustedOrigin(Uri uri) {
+  return uri != null && "https".equals(uri.getScheme())
+    && (HOST.equals(uri.getHost()) || "ilbate-papo.github.io".equals(uri.getHost()))
+    && (uri.getPort() == -1 || uri.getPort() == 443);
+ }
+ private boolean trusted(Uri uri) {
+  if (!trustedOrigin(uri)) return false;
+  String path = uri.getPath();
+  return path == null || path.isEmpty() || path.equals("/") || path.equals("/index.html")
+    || path.startsWith("/IL-Bate-Papo/");
+ }
  @Override public void onCreate(Bundle state){super.onCreate(state);web=new WebView(this);web.setBackgroundColor(android.graphics.Color.rgb(7,21,34));setContentView(web);
   web.setOnApplyWindowInsetsListener((view,insets)->{if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.ime());view.setPadding(bars.left,bars.top,bars.right,bars.bottom);}return insets;});
   WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.9");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->{PushState.token(this,token);sendNotificationState();});s.setMediaPlaybackRequiresUserGesture(false);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
@@ -60,7 +70,7 @@ public class MainActivity extends Activity {
    }
    @Override public void onGeolocationPermissionsHidePrompt(){finishLocation(false);}
    @Override public void onPermissionRequest(PermissionRequest request){runOnUiThread(()->{
-    if(!trusted(request.getOrigin())||pending!=null){request.deny();return;}
+    if(!trustedOrigin(request.getOrigin())||pending!=null){request.deny();return;}
     pending=request;ArrayList<String> missing=new ArrayList<>();
     for(String r:request.getResources()){String p=r.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)?Manifest.permission.CAMERA:r.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)?Manifest.permission.RECORD_AUDIO:null;if(p!=null&&checkSelfPermission(p)!=PackageManager.PERMISSION_GRANTED&&!missing.contains(p))missing.add(p);}
     if(missing.isEmpty())resolvePermission();else requestPermissions(missing.toArray(new String[0]),42);
