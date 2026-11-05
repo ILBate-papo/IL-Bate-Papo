@@ -33,7 +33,7 @@
   const controller=new AbortController();
   const {error:saveError}=await bounded(db.from('push_subscriptions').upsert({
    user_id:user.id,endpoint:'fcm:ilbp:'+user.id+':'+hash,
-   subscription:{app_id:'ilbp',transport:'fcm',token},updated_at:new Date().toISOString()
+   subscription:{app_id:'ilbp',transport:'fcm',token,native_call_service:api.callServiceVersion>=1},updated_at:new Date().toISOString()
   },{onConflict:'endpoint'}).abortSignal(controller.signal),()=>controller.abort());
   if(saveError)throw saveError;
   window.dispatchEvent(new Event('ilbp-fcm-registered'));

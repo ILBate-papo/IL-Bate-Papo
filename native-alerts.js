@@ -30,7 +30,7 @@
   port.onmessage=event=>{
    try{
     const state=JSON.parse(event.data);if(state.type==='call-action'){window.dispatchEvent(new CustomEvent('ilbp-native-call-action',{detail:state}));return;}if(state.type!=='state')return;
-    api.fullScreenAllowed=state.fullScreenAllowed===true;api.callSoundEnabled=state.callSoundEnabled===true;
+    api.callServiceVersion=Number(state.callServiceVersion)||0;api.fullScreenAllowed=state.fullScreenAllowed===true;api.callSoundEnabled=state.callSoundEnabled===true;
     api.fcmToken=typeof state.fcmToken==="string"?state.fcmToken:null;api.permission=state.permission===true;api.backgroundPush=state.backgroundPush===true;
     window.dispatchEvent(new Event('ilbp-native-alert-state'));
    }catch{}
