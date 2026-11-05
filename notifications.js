@@ -110,6 +110,8 @@
     if (Date.now() - Date.parse(row.created_at) > 90000) return;
     var version = generation;
     seen.add("c:" + row.call_id);
+    // Native recovery owns the call alert, including offers missed by this subscription.
+    if(window.ILBPNativeAlerts?.available&&window.ILBPNativeAlerts.incoming&&window.ILBPIncomingCalls)return;
     if(window.ILBPNativeAlerts?.notify(row.payload?.mode==="video"?"video-call":"call",row.payload?.mode==="video"?"Chamada de vídeo recebida":"Chamada de voz recebida","Alguém está ligando para você no IL Bate Papo.","call-"+row.call_id))return;
     // The call dialog already supplies the caller and answer/decline controls.
     // A foreground toast at the same desktop position hides those controls.

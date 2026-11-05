@@ -48,7 +48,7 @@ public class MainActivity extends Activity {
  }
  @Override public void onCreate(Bundle state){super.onCreate(state);web=new WebView(this);web.setBackgroundColor(android.graphics.Color.rgb(7,21,34));setContentView(web);
   web.setOnApplyWindowInsetsListener((view,insets)->{if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.ime());view.setPadding(bars.left,bars.top,bars.right,bars.bottom);}return insets;});
-  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.0.9");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->{PushState.token(this,token);sendNotificationState();});s.setMediaPlaybackRequiresUserGesture(false);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+  WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setUserAgentString(s.getUserAgentString()+" ILBatePapo/1.1.2");s.setDomStorageEnabled(true);s.setCacheMode(WebSettings.LOAD_NO_CACHE);NativeNotifications.createChannels(this);com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token->{PushState.token(this,token);sendNotificationState();});s.setMediaPlaybackRequiresUserGesture(false);s.setAllowFileAccess(false);s.setAllowContentAccess(true);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
   web.setWebViewClient(new WebViewClient(){@Override public void onReceivedError(WebView view,WebResourceRequest request,WebResourceError error){if(request.isForMainFrame())showLoadError();}
    @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,WebResourceResponse response){if(request.isForMainFrame()&&response.getStatusCode()>=400)showLoadError();}
    @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){Uri uri=request.getUrl();if("ilbp-share".equals(uri.getScheme())){if(request.isForMainFrame()&&request.hasGesture()&&trusted(Uri.parse(view.getUrl()))){String text=uri.getQueryParameter("text");if(text!=null&&text.length()<=4000){Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,text);try{startActivity(Intent.createChooser(share,"Compartilhar contato"));}catch(Exception ignored){new AlertDialog.Builder(MainActivity.this).setMessage("Nenhum aplicativo disponível para compartilhar.").setPositiveButton("OK",null).show();}}}return true;}if(isGoogleStart(uri)){beginGoogleLogin();return true;}if(trusted(uri))return false;try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception ignored){}return true;} @Override public void onPageFinished(WebView view,String url){applyPendingSession();connectNativeNotifications();}});
@@ -93,6 +93,14 @@ public class MainActivity extends Activity {
    .setOnDismissListener(dialog->loadErrorShowing=false).show();
  }
 
+ private void showCallDeliveryDiagnostics(){
+  android.content.SharedPreferences report=getSharedPreferences("call_delivery_diagnostics",MODE_PRIVATE);
+  long time=report.getLong("time",0);
+  String result=time==0?"Nenhum aviso de chamada foi registrado pelo APK.":"Último aviso: "+
+   java.text.DateFormat.getDateTimeInstance().format(new java.util.Date(time))+"\n"+report.getString("result","");
+  new AlertDialog.Builder(this).setTitle("Diagnóstico de chamadas").setMessage(result)
+   .setPositiveButton("OK",null).show();
+ }
  private void sendNotificationState(){
   if(notificationPort==null)return;
   try{notificationPort.postMessage(new WebMessage(new JSONObject().put("type","state").put("permission",NativeNotifications.permitted(this)).put("backgroundPush",!PushState.token(this).isEmpty()).put("fcmToken",PushState.token(this)).put("fullScreenAllowed",NativeCalls.fullScreenAllowed(this)).put("callSoundEnabled",NativeNotifications.callSoundEnabled(this)).toString()));}catch(Exception ignored){}
@@ -113,8 +121,9 @@ public class MainActivity extends Activity {
     if("full-screen-settings".equals(type)&&android.os.Build.VERSION.SDK_INT>=34){startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,Uri.parse("package:"+getPackageName())));return;}
     if("enable-alerts".equals(type)){
      if(!NativeNotifications.permitted(MainActivity.this)&&android.os.Build.VERSION.SDK_INT>=33){notificationTestPending=true;requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS},44);}
-     else{NativeNotifications.show(MainActivity.this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");sendNotificationState();}return;
+     else{NativeNotifications.show(MainActivity.this,"message","IL Bate Papo: teste de aviso","Som e vibração das notificações deste aparelho.","ilbp-test");sendNotificationState();showCallDeliveryDiagnostics();}return;
     }
+    if("incoming-call".equals(type)){NativeCalls.showFromWeb(MainActivity.this,data);return;}
     if(!"notify".equals(type))return;
     String kind=data.optString("kind");if(!java.util.Arrays.asList("message","audio","call","video-call").contains(kind))return;
     String title=data.optString("title"),body=data.optString("body"),tag=data.optString("tag");

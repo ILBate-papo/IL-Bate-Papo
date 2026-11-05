@@ -14,3 +14,14 @@ api.enable();assert.equal(sent[2].type,'enable-alerts');
 api.available=false;handler({data:'ilbp-native-notifications',origin:'null',source:null,ports:[port]});assert.equal(api.available,false);
 context.navigator.userAgent='Android; wv ILBatePapo/1.0.3';handler({data:'ilbp-native-notifications',origin:'null',source:null,ports:[port]});assert.equal(api.available,true);
 console.log('Passed: trusted notification port, explicit permission, bounded text, no false background-push claim.');
+
+const call={call_id:'11111111-1111-4111-8111-111111111111',recipient_id:'22222222-2222-4222-8222-222222222222',signal_type:'offer',created_at:new Date(Date.now()-30000).toISOString(),payload:{mode:'video',description:{type:'offer'}}};
+assert.equal(api.incoming(call,'Leandro'),true);
+const native=sent.at(-1);assert.equal(native.type,'incoming-call');assert.equal(native.name,'Leandro');assert.equal(native.mode,'video');
+assert.equal(native.expiresAt,Date.parse(call.created_at)+90000,'recovery must retain original expiry');
+const count=sent.length;
+assert.equal(api.incoming({...call,created_at:new Date(Date.now()-100000).toISOString()}),false);
+assert.equal(api.incoming({...call,call_id:'invalid'}),false);
+assert.equal(api.incoming({...call,signal_type:'answer'}),false);
+api.permission=false;assert.equal(api.incoming(call),false);assert.equal(sent.length,count);
+console.log('PASS: native recovered offer, original expiry, caller, permission and stale/invalid filtering.');
