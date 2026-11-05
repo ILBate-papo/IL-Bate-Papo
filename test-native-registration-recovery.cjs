@@ -9,7 +9,7 @@ async function deadline(){const entry=[...timers].find(([,t])=>t.ms===15000);ass
  poll();await flush();assert.equal(saves.length,0);
  events.online();events.online();hangSession=false;await deadline();
  assert.equal(saves.length,1,'a blocked session must not permanently block subsequent registration');
- assert.equal(saves[0].user_id,'one');assert.equal(errors.length,1);
+ assert.equal(saves[0].user_id,'one');assert.equal(errors.length,1);assert(!('android_notification_mode' in saves[0]),'older clients retain their delivery configuration');window.ILBPNativeAlerts.callServiceVersion=1;events.online();await flush();assert.equal(saves.at(-1).android_notification_mode,'native');assert.equal(saves.at(-1).subscription.native_call_service,true);
  authChanged('TOKEN_REFRESHED',{user:{id:'one'}});await flush();assert(!accounts.includes(''),'token refresh must not clear the active native account');
  hangSave=true;events.online();await flush();await deadline();assert(aborted,'timed-out network writes must be aborted');
  hangSave=false;events.online();await flush();assert.equal(saves.at(-1).user_id,'one');
