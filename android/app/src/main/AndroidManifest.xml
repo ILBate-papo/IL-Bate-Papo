@@ -8,11 +8,15 @@
  <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
  <uses-permission android:name="android.permission.VIBRATE"/>
  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL"/>
+ <uses-permission android:name="android.permission.MANAGE_OWN_CALLS"/>
  <uses-feature android:name="android.hardware.camera" android:required="false"/>
  <application android:label="IL Bate Papo" android:icon="@drawable/lion" android:theme="@android:style/Theme.Material.NoActionBar" android:usesCleartextTraffic="false" android:allowBackup="false">
+  <service android:name=".IncomingCallService" android:exported="false" android:foregroundServiceType="phoneCall"/>
   <service android:name=".ILBPFirebaseMessagingService" android:exported="false"><intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter></service>
   <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="ilbp-messages-v1"/>
-  <activity android:name=".IncomingCallActivity" android:exported="false" android:excludeFromRecents="true" android:launchMode="singleTop"/>
+  <activity android:showWhenLocked="true" android:turnScreenOn="true" android:name=".IncomingCallActivity" android:exported="false" android:excludeFromRecents="true" android:launchMode="singleTop"/>
   <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:configChanges="orientation|screenSize|keyboardHidden">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
    <intent-filter>

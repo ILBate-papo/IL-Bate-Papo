@@ -13,7 +13,9 @@ public final class IncomingCallActivity extends Activity {
  private final Handler handler=new Handler(Looper.getMainLooper());
  private String callId;
  private final Runnable expiry=new Runnable(){public void run(){if(NativeCalls.get(IncomingCallActivity.this,callId)==null){NativeCalls.close(IncomingCallActivity.this,callId);finish();}else handler.postDelayed(this,1000);}};
- @Override public void onCreate(Bundle state){super.onCreate(state);callId=getIntent().getStringExtra("call_id");
+ @Override public void onCreate(Bundle state){super.onCreate(state);render();}
+ @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);render();}
+ private void render(){handler.removeCallbacks(expiry);callId=getIntent().getStringExtra("call_id");
   JSONObject call=NativeCalls.get(this,callId);if(call==null){finish();return;}
   if(Build.VERSION.SDK_INT>=27){setShowWhenLocked(true);setTurnScreenOn(true);}else getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED|WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   LinearLayout layout=new LinearLayout(this);layout.setOrientation(LinearLayout.VERTICAL);layout.setGravity(Gravity.CENTER);layout.setPadding(32,32,32,32);layout.setBackgroundColor(Color.rgb(7,21,34));
