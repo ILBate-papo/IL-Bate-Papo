@@ -12,21 +12,26 @@
  let busy=false;
  download.addEventListener('click',async event=>{
   event.preventDefault();if(busy)return;busy=true;download.setAttribute('aria-disabled','true');
-  status.textContent='Preparando o APK 1.0.9 para baixar…';
+  status.textContent='Preparando o APK 1.1.3 para baixar…';
   try{
    const controller=new AbortController();
    const timeout=setTimeout(()=>controller.abort(),45000);
    let bytes;
    try {
-    const response=await fetch(new URL('./downloads/IL-Bate-Papo-1.0.9-TESTE.apk',document.baseURI).href,{cache:'no-cache',signal:controller.signal});
-    if(!response.ok)throw Error('download');
-    bytes=new Uint8Array(await response.arrayBuffer());
+    const parts=await Promise.all(Array.from({length:15},async(_,i)=>{
+     const name='./downloads/IL-Bate-Papo-1.1.3-part'+String(i).padStart(2,'0')+'.txt';
+     const response=await fetch(new URL(name,document.baseURI).href,{cache:'no-cache',signal:controller.signal});
+     if(!response.ok)throw Error('download');
+     return response.text();
+    }));
+    const binary=atob(parts.join(''));
+    bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));
    } finally { clearTimeout(timeout); }
-   if(bytes.length!==2996498)throw Error('size');
+   if(bytes.length!==2926268)throw Error('size');
    const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');
-   if(hash!=='618bb110a4f036e115520530c4a5163ede7b5b4355b1c6d37f0cf39bb5ea5d66')throw Error('checksum');
+   if(hash!=='64280421684a0e392754e001896acd37088e1092d005ad530df29c02a476d879')throw Error('checksum');
    const blobURL=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.android.package-archive'}));
-   const link=document.createElement('a');link.href=blobURL;link.download='IL-Bate-Papo-1.0.9-TESTE.apk';document.body.append(link);link.click();link.remove();
+   const link=document.createElement('a');link.href=blobURL;link.download='IL-Bate-Papo-1.1.3-TESTE.apk';document.body.append(link);link.click();link.remove();
    setTimeout(()=>URL.revokeObjectURL(blobURL),60000);
    status.textContent='Abra o arquivo baixado para instalar. Depois, volte a este convite para adicionar o contato. Você também pode continuar pelo navegador.';
   }catch(error){status.textContent='Não foi possível baixar agora. Confira sua conexão e toque em Baixar para tentar novamente.';}
