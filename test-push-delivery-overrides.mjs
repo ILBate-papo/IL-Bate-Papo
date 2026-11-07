@@ -1,0 +1,11 @@
+import assert from "node:assert/strict";
+import { systemDisplayFor } from "./supabase/functions/push-notify/delivery-mode.ts";
+const native = {subscription:{app_id:"ilbp",transport:"fcm"},android_notification_mode:"native"};
+for (const delivery_override of [undefined,null,[]]) assert.equal(systemDisplayFor({...native,delivery_override}),false);
+for (const delivery_override of [{android_mode:"system"},[{android_mode:"system"}]]) assert.equal(systemDisplayFor({...native,delivery_override}),true);
+assert.equal(systemDisplayFor({...native,android_notification_mode:"system"}),true);
+assert.equal(systemDisplayFor({...native,android_notification_mode:"system",delivery_override:{android_mode:"native"}}),false);
+for (const subscription of [{app_id:"ilchats",transport:"fcm"},{app_id:"ilbp",transport:"webpush"}]) assert.equal(systemDisplayFor({...native,subscription,delivery_override:{android_mode:"system"}}),false);
+const refreshed = {...native,android_notification_mode:"native",delivery_override:{android_mode:"system"}};
+assert.equal(systemDisplayFor(refreshed),true);
+console.log("Per-installation override tests passed; no notifications sent.");
