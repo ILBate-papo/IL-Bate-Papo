@@ -1,3 +1,4 @@
+import { systemDisplayFor } from "./delivery-mode.ts";
 import { sendFcm } from "./fcm.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
@@ -113,7 +114,7 @@ Deno.serve(async (request) => {
       tag: isCall ? `call-${body.call_id}` : `message-${body.conversation_id}`,
       url: "/",
     });
-    const { data: subscriptions, error: subscriptionError } = await admin.from("push_subscriptions").select("id,user_id,subscription,android_notification_mode").in("user_id", recipients).contains("subscription", { app_id: app.id });
+    const { data: subscriptions, error: subscriptionError } = await admin.from("push_subscriptions").select("id,user_id,subscription,android_notification_mode,delivery_override:push_delivery_overrides(android_mode)").in("user_id", recipients).contains("subscription", { app_id: app.id });
     if (subscriptionError) throw subscriptionError;
     let sent = 0;
     let failed = 0;
@@ -121,7 +122,7 @@ Deno.serve(async (request) => {
       try {
         if (item.subscription.transport === "fcm") {
           if(app.id!=="ilbp")throw new Error("FCM_APP_MISMATCH");
-          await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload), item.android_notification_mode === "system");
+          await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload), systemDisplayFor(item));
         } else { if (!webpushConfigured) throw new Error("WEBPUSH_NOT_CONFIGURED"); await webpush.sendNotification(item.subscription, payload, {
           TTL: isCall || body.type === "call-end" ? 90 : 86400,
           urgency: isCall ? "high" : "normal",
@@ -129,7 +130,7 @@ Deno.serve(async (request) => {
         });
         }
         sent += 1;
-        if(app.id === "ilbp") console.info("ILBP_PUSH_PROVIDER_ACCEPTED", { type: body.type, call_id: body.call_id || null, recipient_id: item.user_id, transport: item.subscription.transport === "fcm" ? "fcm" : "webpush", android_display: item.subscription.transport === "fcm" && item.android_notification_mode === "system" ? "system" : "app" });
+        if(app.id === "ilbp") console.info("ILBP_PUSH_PROVIDER_ACCEPTED", { type: body.type, call_id: body.call_id || null, recipient_id: item.user_id, transport: item.subscription.transport === "fcm" ? "fcm" : "webpush", android_display: item.subscription.transport === "fcm" && systemDisplayFor(item) ? "system" : "app" });
       } catch (error) {
         failed += 1;
         const statusCode = (error as { statusCode?: number }).statusCode;
