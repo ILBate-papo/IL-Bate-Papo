@@ -50,6 +50,8 @@ Deno.serve(async (request) => {
     const admin = createClient(url, service);
     let recipients: string[] = [];
     let callCreatedAt: string | undefined;
+    let missedCall = false;
+    let callMode = body.mode;
 
     if (body.type === "call" && body.recipient_id && body.call_id) {
       const { data: signal } = await admin.from("call_signals").select("call_id,created_at")
@@ -66,10 +68,22 @@ Deno.serve(async (request) => {
       }
       recipients = [body.recipient_id];
     } else if (body.type === "call-end" && app.id === "ilbp" && body.recipient_id && body.call_id) {
-      const {data: terminal} = await admin.from("call_signals").select("call_id")
+      const {data: terminal,error: terminalError} = await admin.from("call_signals").select("call_id,signal_type")
         .eq("call_id",body.call_id).eq("sender_id",caller.id).eq("recipient_id",body.recipient_id)
         .in("signal_type",["answer","hangup"]).order("created_at",{ascending:false}).limit(1).maybeSingle();
+      if(terminalError)throw terminalError;
       if(!terminal)return Response.json({error:"call not found"},{status:403,headers:cors});
+      const {data: offer,error: offerError}=await admin.from("call_signals").select("sender_id,recipient_id,payload,created_at")
+        .eq("call_id",body.call_id).eq("signal_type","offer").maybeSingle();
+      if(offerError)throw offerError;
+      if(!offer || ![offer.sender_id,offer.recipient_id].includes(caller.id) || ![offer.sender_id,offer.recipient_id].includes(body.recipient_id))
+        return Response.json({error:"call offer not found"},{status:403,headers:cors});
+      callMode=offer.payload?.mode;
+      callCreatedAt=offer.created_at;
+      const {data: answers,error: answersError}=await admin.from("call_signals").select("call_id")
+        .eq("call_id",body.call_id).eq("signal_type","answer").limit(1);
+      if(answersError)throw answersError;
+      missedCall=terminal.signal_type==="hangup" && offer.sender_id===caller.id && !answers?.length;
       recipients=[body.recipient_id];
     } else if (body.type === "message" && body.conversation_id) {
       const { data: membership } = await admin.from("conversation_members").select("user_id")
@@ -84,21 +98,22 @@ Deno.serve(async (request) => {
     const { data: profile } = await admin.from("profiles").select("display_name").eq("id", caller.id).maybeSingle();
     const sender = profile?.display_name || "Alguém";
     const isCall = body.type === "call";
-    const mode = body.mode === "video" ? "vídeo" : "voz";
+    const mode = callMode === "video" ? "vídeo" : "voz";
     const payload = JSON.stringify({
       type: body.type === "call-end" ? "call-end" : isCall ? "call" : "message",
       sender_name: sender,
-      title: isCall ? `Ligação de ${mode} no ${app.name}` : `Mensagem de ${sender}`,
-      body: isCall ? `${sender} está ligando para você.` : String(body.preview || "Nova mensagem").slice(0, 140),
+      title: missedCall ? `Chamada perdida de ${sender}` : isCall ? (app.id === "ilbp" ? `${sender} ligando · ${mode}` : `Ligação de ${mode} no ${app.name}`) : `Mensagem de ${sender}`,
+      body: missedCall ? `Você não atendeu à chamada de ${mode} de ${sender}.` : isCall ? `${sender} está ligando para você.` : String(body.preview || "Nova mensagem").slice(0, 140),
       app_id: app.id,
-      mode: body.mode,
+      mode: callMode,
+      missed_call: missedCall,
       attachment_type: body.attachment_type,
       call_id: body.call_id,
       created_at: callCreatedAt || new Date().toISOString(),
       tag: isCall ? `call-${body.call_id}` : `message-${body.conversation_id}`,
       url: "/",
     });
-    const { data: subscriptions, error: subscriptionError } = await admin.from("push_subscriptions").select("id,user_id,subscription").in("user_id", recipients).contains("subscription", { app_id: app.id });
+    const { data: subscriptions, error: subscriptionError } = await admin.from("push_subscriptions").select("id,user_id,subscription,android_notification_mode").in("user_id", recipients).contains("subscription", { app_id: app.id });
     if (subscriptionError) throw subscriptionError;
     let sent = 0;
     let failed = 0;
@@ -106,7 +121,7 @@ Deno.serve(async (request) => {
       try {
         if (item.subscription.transport === "fcm") {
           if(app.id!=="ilbp")throw new Error("FCM_APP_MISMATCH");
-          await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload));
+          await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload), item.android_notification_mode === "system");
         } else { if (!webpushConfigured) throw new Error("WEBPUSH_NOT_CONFIGURED"); await webpush.sendNotification(item.subscription, payload, {
           TTL: isCall || body.type === "call-end" ? 90 : 86400,
           urgency: isCall ? "high" : "normal",
@@ -114,7 +129,7 @@ Deno.serve(async (request) => {
         });
         }
         sent += 1;
-        if(app.id === "ilbp") console.info("ILBP_PUSH_PROVIDER_ACCEPTED", { type: body.type, call_id: body.call_id || null, recipient_id: item.user_id, transport: item.subscription.transport === "fcm" ? "fcm" : "webpush" });
+        if(app.id === "ilbp") console.info("ILBP_PUSH_PROVIDER_ACCEPTED", { type: body.type, call_id: body.call_id || null, recipient_id: item.user_id, transport: item.subscription.transport === "fcm" ? "fcm" : "webpush", android_display: item.subscription.transport === "fcm" && item.android_notification_mode === "system" ? "system" : "app" });
       } catch (error) {
         failed += 1;
         const statusCode = (error as { statusCode?: number }).statusCode;
@@ -130,4 +145,5 @@ Deno.serve(async (request) => {
     return Response.json({ error: message }, { status: 500, headers: cors });
   }
 });
+
 
