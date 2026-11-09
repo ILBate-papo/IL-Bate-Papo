@@ -21,6 +21,11 @@ public class IncomingCallLifecycleTest {
  @Test public void callUsesExistingChannelAndNativeButtons(){
   Intent i=offer();Notification n=i.getParcelableExtra("notification");assertNotNull(n);assertEquals("ilbp-video-calls-v1",n.getChannelId());assertEquals(Notification.CATEGORY_CALL,n.category);assertTrue(n.extras.getString(Notification.EXTRA_TITLE).contains("Leandro"));assertNotNull(n.contentIntent);assertNotNull(n.actions);assertTrue(n.actions.length>=2);
  }
+ @Test public void newCallsMayAlertEvenWhenAForegroundNotificationIdIsReused(){
+  Intent i=offer();Notification n=i.getParcelableExtra("notification");
+  assertEquals(0,n.flags & Notification.FLAG_ONLY_ALERT_ONCE);
+  assertNotEquals(0,n.flags & Notification.FLAG_INSISTENT);
+ }
  @Test public void preferencesAloneDoNotSuppressASecondDelivery(){offer();assertFalse(NativeCalls.visible(app,CALL));offer();}
  @Test public void serviceKeepsOneNoticeAndExpires(){
   Intent i=offer();IncomingCallService service=Robolectric.buildService(IncomingCallService.class).create().get();
@@ -28,6 +33,14 @@ public class IncomingCallLifecycleTest {
   service.onStartCommand(i,0,2);assertEquals(1,app.getSystemService(NotificationManager.class).getActiveNotifications().length);
   shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(91));
   assertNull(NativeCalls.get(app,CALL));assertTrue(app.getSharedPreferences("incoming_calls",0).getLong("closed-"+CALL,0)>0);service.onDestroy();
+ }
+ @Test public void duplicateOfferCannotRestartAVisibleRingingCall(){
+  Intent i=offer();IncomingCallService service=Robolectric.buildService(IncomingCallService.class).create().get();
+  service.onStartCommand(i,0,1);
+  assertTrue(NativeCalls.show(app,CALL,USER,"Leandro","video",System.currentTimeMillis()+90000));
+  assertNull(shadowOf(app).getNextStartedService());
+  assertEquals(1,app.getSystemService(NotificationManager.class).getActiveNotifications().length);
+  service.onDestroy();
  }
  @Test public void closedExpiredAndOtherAccountCallsCannotRing(){
   offer();NativeCalls.close(app,CALL);assertFalse(NativeCalls.show(app,CALL,USER,"Leandro","video",System.currentTimeMillis()+90000));
