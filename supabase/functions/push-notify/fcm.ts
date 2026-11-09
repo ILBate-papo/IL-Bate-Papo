@@ -34,10 +34,11 @@ export function fcmMessage(token: string,recipient: string,payload: Record<strin
  if(systemDisplay && payload.app_id==="ilbp" && ["call","call-end","message"].includes(String(payload.type))){
   const video=payload.mode==="video",ended=payload.type==="call-end";
   const mode=video?"vídeo":"voz";
-  // The OS may display this before the app can validate its signed-in account.
-  // Keep this surface generic; names and message previews remain inside the app.
+  const caller=String(payload.sender_name||"").trim().slice(0,80)||"Alguém";
+  // Show the caller name for calls, as requested by the app owner.
+  // Message previews remain generic; PRIVATE visibility respects lock-screen privacy.
   android.notification={
-   title:call?`Chamada de ${mode} no IL Bate Papo`:ended?(payload.missed_call===true?"Chamada não atendida no IL Bate Papo":"Chamada encerrada no IL Bate Papo"):"Nova mensagem no IL Bate Papo",
+   title:call?`${caller} ligando · ${mode}`:ended?(payload.missed_call===true?`Chamada perdida de ${caller}`:"Chamada encerrada no IL Bate Papo"):"Nova mensagem no IL Bate Papo",
    body:call?"Toque para abrir o aplicativo e atender.":ended?"Toque para consultar o histórico no aplicativo.":"Toque para abrir o aplicativo e ler.",
    channel_id:call?(video?"ilbp-video-calls-v1":"ilbp-voice-calls-v1"):(payload.attachment_type==="audio"?"ilbp-audio-v1":"ilbp-messages-v1"),
    tag:call||ended?`ilbp-remote-call-${payload.call_id}`:String(payload.tag||"ilbp-remote-message"),
@@ -59,4 +60,6 @@ export async function sendFcm(token: string,recipient: string,payload: Record<st
   const error=Object.assign(new Error("FCM_SEND_FAILED: "+response.status),{statusCode:unregistered?410:response.status});throw error;
  }
 }
+
+
 
