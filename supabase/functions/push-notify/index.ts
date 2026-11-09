@@ -1,4 +1,5 @@
 import { sendFcm } from "./fcm.ts";
+import { urgentNativePilot } from "./delivery-policy.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 
@@ -102,7 +103,7 @@ Deno.serve(async (request) => {
     const payload = JSON.stringify({
       type: body.type === "call-end" ? "call-end" : isCall ? "call" : "message",
       sender_name: sender,
-      title: missedCall ? `Chamada perdida de ${sender}` : isCall ? `Ligação de ${mode} no ${app.name}` : `Mensagem de ${sender}`,
+      title: missedCall ? `Chamada perdida de ${sender}` : isCall ? (app.id === "ilbp" ? `${sender} ligando · ${mode}` : `Ligação de ${mode} no ${app.name}`) : `Mensagem de ${sender}`,
       body: missedCall ? `Você não atendeu à chamada de ${mode} de ${sender}.` : isCall ? `${sender} está ligando para você.` : String(body.preview || "Nova mensagem").slice(0, 140),
       app_id: app.id,
       mode: callMode,
@@ -118,10 +119,11 @@ Deno.serve(async (request) => {
     let sent = 0;
     let failed = 0;
     for (const item of subscriptions || []) {
+      const urgentNative = urgentNativePilot(item.id, item.user_id, JSON.parse(payload), item.subscription.native_call_service === true);
       try {
         if (item.subscription.transport === "fcm") {
           if(app.id!=="ilbp")throw new Error("FCM_APP_MISMATCH");
-          await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload), item.android_notification_mode === "system");
+          await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload), item.android_notification_mode === "system", urgentNative);
         } else { if (!webpushConfigured) throw new Error("WEBPUSH_NOT_CONFIGURED"); await webpush.sendNotification(item.subscription, payload, {
           TTL: isCall || body.type === "call-end" ? 90 : 86400,
           urgency: isCall ? "high" : "normal",
@@ -129,7 +131,7 @@ Deno.serve(async (request) => {
         });
         }
         sent += 1;
-        if(app.id === "ilbp") console.info("ILBP_PUSH_PROVIDER_ACCEPTED", { type: body.type, call_id: body.call_id || null, recipient_id: item.user_id, transport: item.subscription.transport === "fcm" ? "fcm" : "webpush", android_display: item.subscription.transport === "fcm" && item.android_notification_mode === "system" ? "system" : "app" });
+        if(app.id === "ilbp") console.info("ILBP_PUSH_PROVIDER_ACCEPTED", { type: body.type, call_id: body.call_id || null, recipient_id: item.user_id, transport: item.subscription.transport === "fcm" ? "fcm" : "webpush", android_display: urgentNative ? (body.type === "call" ? "urgent-native" : "native-cancel") : item.subscription.transport === "fcm" && item.android_notification_mode === "system" ? "system" : "app" });
       } catch (error) {
         failed += 1;
         const statusCode = (error as { statusCode?: number }).statusCode;
@@ -145,5 +147,6 @@ Deno.serve(async (request) => {
     return Response.json({ error: message }, { status: 500, headers: cors });
   }
 });
+
 
 
