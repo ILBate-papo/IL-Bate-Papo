@@ -94,11 +94,7 @@ public class MainActivity extends Activity {
  }
 
  private void showCallDeliveryDiagnostics(){
-  android.content.SharedPreferences report=getSharedPreferences("call_delivery_diagnostics",MODE_PRIVATE);
-  long time=report.getLong("time",0);
-  String result=time==0?"Nenhum aviso de chamada foi registrado pelo APK.":"Último aviso: "+
-   java.text.DateFormat.getDateTimeInstance().format(new java.util.Date(time))+"\n"+report.getString("result","");
-  new AlertDialog.Builder(this).setTitle("Diagnóstico de chamadas").setMessage(result)
+  new AlertDialog.Builder(this).setTitle("Diagnóstico de chamadas 1.1.7").setMessage(CallDeliveryDiagnostics.report(this))
    .setPositiveButton("OK",null).show();
  }
  private void sendNotificationState(){

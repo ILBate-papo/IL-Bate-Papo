@@ -57,7 +57,7 @@ public final class NativeCalls {
   Notification.Builder builder=new Notification.Builder(c,channel).setSmallIcon(android.R.drawable.sym_call_incoming)
    .setLargeIcon(logo).setContentTitle(caller+" está ligando para você").setContentText("video".equals(mode)?"Chamada de vídeo":"Chamada de voz")
    .setCategory(Notification.CATEGORY_CALL).setVisibility(Notification.VISIBILITY_PRIVATE)
-   .setContentIntent(full).setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(true).setTimeoutAfter(expires-now);
+   .setContentIntent(full).setOngoing(true).setAutoCancel(false).setOnlyAlertOnce(false).setTimeoutAfter(expires-now);
   if(Build.VERSION.SDK_INT>=31)builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE);
   if(Build.VERSION.SDK_INT>=31)builder.setStyle(Notification.CallStyle.forIncomingCall(new Person.Builder().setName(caller).setIcon(logo).setImportant(true).build(),decline,answer));
   else builder.addAction(new Notification.Action.Builder(android.R.drawable.ic_menu_close_clear_cancel,"Recusar",decline).build()).addAction(new Notification.Action.Builder(android.R.drawable.sym_action_call,"Atender",answer).build());
