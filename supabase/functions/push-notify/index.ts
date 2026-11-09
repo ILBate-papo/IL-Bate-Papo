@@ -1,4 +1,5 @@
 import { sendFcm } from "./fcm.ts";
+import { currentFcmRegistrationIds } from "./fcm-ownership.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
 
@@ -102,7 +103,7 @@ Deno.serve(async (request) => {
     const payload = JSON.stringify({
       type: body.type === "call-end" ? "call-end" : isCall ? "call" : "message",
       sender_name: sender,
-      title: missedCall ? `Chamada perdida de ${sender}` : isCall ? `Ligação de ${mode} no ${app.name}` : `Mensagem de ${sender}`,
+      title: missedCall ? `Chamada perdida de ${sender}` : isCall ? (app.id === "ilbp" ? `${sender} ligando · ${mode}` : `Ligação de ${mode} no ${app.name}`) : `Mensagem de ${sender}`,
       body: missedCall ? `Você não atendeu à chamada de ${mode} de ${sender}.` : isCall ? `${sender} está ligando para você.` : String(body.preview || "Nova mensagem").slice(0, 140),
       app_id: app.id,
       mode: callMode,
@@ -115,12 +116,30 @@ Deno.serve(async (request) => {
     });
     const { data: subscriptions, error: subscriptionError } = await admin.from("push_subscriptions").select("id,user_id,subscription,android_notification_mode").in("user_id", recipients).contains("subscription", { app_id: app.id });
     if (subscriptionError) throw subscriptionError;
+    let currentFcm: Set<string> | null = null;
+    if(app.id === "ilbp" && (subscriptions || []).some(item=>item.subscription.transport === "fcm")){
+      const registrations = [];
+      // Page rather than relying on the Data API's row cap as the app grows.
+      for(let offset=0;;offset+=500){
+        const {data:page,error:ownerError}=await admin.from("push_subscriptions")
+          .select("id,user_id,updated_at,subscription").contains("subscription",{app_id:"ilbp",transport:"fcm"})
+          .order("id").range(offset,offset+499);
+        if(ownerError)throw ownerError;
+        registrations.push(...(page || []));
+        if(!page || page.length<500)break;
+      }
+      currentFcm=currentFcmRegistrationIds(registrations);
+    }
     let sent = 0;
     let failed = 0;
     for (const item of subscriptions || []) {
       try {
         if (item.subscription.transport === "fcm") {
           if(app.id!=="ilbp")throw new Error("FCM_APP_MISMATCH");
+          if(currentFcm && !currentFcm.has(item.id)){
+            console.info("ILBP_PUSH_STALE_REGISTRATION_SKIPPED",{subscription_id:item.id,recipient_id:item.user_id});
+            continue;
+          }
           await sendFcm(item.subscription.token, item.user_id, JSON.parse(payload), item.android_notification_mode === "system");
         } else { if (!webpushConfigured) throw new Error("WEBPUSH_NOT_CONFIGURED"); await webpush.sendNotification(item.subscription, payload, {
           TTL: isCall || body.type === "call-end" ? 90 : 86400,
@@ -145,5 +164,7 @@ Deno.serve(async (request) => {
     return Response.json({ error: message }, { status: 500, headers: cors });
   }
 });
+
+
 
 
